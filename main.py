@@ -4,7 +4,7 @@ import random
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message
+from aiogram.types import Message, BotCommand
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -26,7 +26,11 @@ WORDS =[
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    await message.answer('Привет! Я помогу тебе учить английский: карточки, игра на совпадение и тесты.')
+    await message.answer(
+        "Привет! Я помогу тебе учить английский.\n\n"
+        "Доступные команды:\n"
+        "/card — получить случайную карточку"
+    )
 
 
 @dp.message(Command('card'))
@@ -45,6 +49,13 @@ async def echo_text(message: Message) -> None:
 
 
 async def main() -> None:
+    await bot.set_my_commands(
+        [
+            BotCommand(command='start', description='Запустить бота'),
+            BotCommand(command='card', description='Получить случайную карту'),
+        ]
+    )
+
     print('Bot запустился')
     await dp.start_polling(bot)
 
