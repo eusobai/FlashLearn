@@ -1,8 +1,9 @@
 import os
 import asyncio
+import random
 
 from aiogram import Bot, Dispatcher
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 
 from dotenv import load_dotenv
@@ -15,12 +16,27 @@ if not BOT_TOKEN:
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-
+WORDS =[
+    {"english": "apple", "russian": "яблоко"},
+    {"english": "book", "russian": "книга"},
+    {"english": "house", "russian": "дом"},
+    {"english": "water", "russian": "вода"},
+    {"english": "friend", "russian": "друг"},
+]
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     await message.answer('Привет! Я помогу тебе учить английский: карточки, игра на совпадение и тесты.')
 
+
+@dp.message(Command('card'))
+async def send_card(message: Message) -> None:
+    word = random.choice(WORDS)
+    await message.answer(
+        f'📚 Карточка\n\n'
+        f'Английское слово: {word['english']}\n'
+        f'Перевод: {word['russian']}'
+    )
 
 @dp.message()
 async def echo_text(message: Message) -> None:
