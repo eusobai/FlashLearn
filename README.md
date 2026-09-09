@@ -1,4 +1,3 @@
-````markdown
 # English Learning Telegram Bot
 
 Telegram-бот для изучения английского языка.
