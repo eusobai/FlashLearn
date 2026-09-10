@@ -1,6 +1,8 @@
 import os
 import asyncio
 import random
+import logging
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart, Command
@@ -8,6 +10,21 @@ from aiogram.types import Message, BotCommand
 
 from dotenv import load_dotenv
 load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
+logging.basicConfig(
+    level= logging.INFO,
+    format= '%(asctime)s | %(levelname)s %(name)s %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_DIR / 'bot.log', encoding = 'utf-8'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 if not BOT_TOKEN:
@@ -26,6 +43,10 @@ WORDS =[
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
+    username = message.from_user.username if message.from_user.username else 'unknown'
+    logger.info(
+        'The user is connected | username = %s', username
+    )
     await message.answer(
         "Привет! Я помогу тебе учить английский.\n\n"
         "Доступные команды:\n"
@@ -36,6 +57,13 @@ async def cmd_start(message: Message) -> None:
 @dp.message(Command('card'))
 async def send_card(message: Message) -> None:
     word = random.choice(WORDS)
+    username = message.from_user.username if message.from_user.username else 'unknown'
+
+    logger.info(
+        'Card sent | username = %s | word = %s',
+        username,
+        word["english"]
+    )
     await message.answer(
         f'📚 Карточка\n\n'
         f'Английское слово: {word['english']}\n'
@@ -44,7 +72,14 @@ async def send_card(message: Message) -> None:
 
 @dp.message()
 async def echo_text(message: Message) -> None:
-    print(f'(log) Пользователь {message.from_user.username} написал: {message.text}')
+    username = message.from_user.username if message.from_user.username else 'unknown'
+    text = message.text
+
+    logger.info(
+        'Text received | username = %s | text = %s',
+        username,
+        text    
+    )
     await message.answer(f'Ты написал: {message.text}')
 
 
@@ -56,7 +91,7 @@ async def main() -> None:
         ]
     )
 
-    print('Bot запустился')
+    logger.info('Bot запустился')
     await dp.start_polling(bot)
 
 
