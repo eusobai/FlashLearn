@@ -4,9 +4,9 @@ import random
 import logging
 from pathlib import Path
 
-from aiogram import Bot, Dispatcher
-from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, BotCommand
+from aiogram import Bot, Dispatcher, F
+from aiogram.filters import CommandStart, Command 
+from aiogram.types import Message, BotCommand, KeyboardButton, ReplyKeyboardMarkup
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -33,6 +33,7 @@ if not BOT_TOKEN:
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
 WORDS =[
     {"english": "apple", "russian": "яблоко"},
     {"english": "book", "russian": "книга"},
@@ -40,6 +41,19 @@ WORDS =[
     {"english": "water", "russian": "вода"},
     {"english": "friend", "russian": "друг"},
 ]
+
+main_keybord = ReplyKeyboardMarkup(
+    keyboard=
+        [ 
+        [
+            KeyboardButton(text='📚 Получить карточку')
+
+        ]
+        ],
+    resize_keyboard = True,
+    input_field_placeholder = 'Выбери действие',
+
+)
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
@@ -49,12 +63,13 @@ async def cmd_start(message: Message) -> None:
     )
     await message.answer(
         "Привет! Я помогу тебе учить английский.\n\n"
-        "Доступные команды:\n"
-        "/card — получить случайную карточку"
+        "Нажми кнопку ниже, чтобы получить карточку.",
+        reply_markup= main_keybord, 
     )
 
 
 @dp.message(Command('card'))
+@dp.message(F.text == '📚 Получить карточку')
 async def send_card(message: Message) -> None:
     word = random.choice(WORDS)
     username = message.from_user.username if message.from_user.username else 'unknown'
