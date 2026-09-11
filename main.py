@@ -43,12 +43,15 @@ WORDS =[
 ]
 
 current_quiz_words = {}
+user_stats = {}
+
 
 main_keybord = ReplyKeyboardMarkup(
     keyboard=
         [ 
         [KeyboardButton(text='📚 Получить карточку')],
-        [KeyboardButton(text = '📝 Пройти тест')]
+        [KeyboardButton(text = '📝 Пройти тест')],
+        [KeyboardButton(text = '📊 Моя статистика')],
         ],
     resize_keyboard = True,
     input_field_placeholder = 'Выбери действие',
@@ -58,14 +61,14 @@ main_keybord = ReplyKeyboardMarkup(
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     username = message.from_user.username if message.from_user.username else 'unknown'
+
     logger.info(
         'The user is connected | username = %s', username
     )
+
     await message.answer(
-        'Привет! Я помогу тебе учить английский.\n\n'
-        'Выбери действие ниже:\n'
-        '— Получить карточку\n'
-        '— Пройти тест',
+        "Привет! Я помогу тебе учить английский.\n\n"
+        "Выбери действие на клавиатуре ниже.",
         reply_markup= main_keybord, 
     )
 
@@ -76,11 +79,14 @@ async def send_card(message: Message) -> None:
     word = random.choice(WORDS)
     username = message.from_user.username if message.from_user.username else 'unknown'
 
+
     logger.info(
         'Card sent | username = %s | word = %s',
         username,
         word["english"]
     )
+
+
     await message.answer(
         f'📚 Карточка\n\n'
         f'Английское слово: {word['english']}\n'
@@ -91,36 +97,89 @@ async def send_card(message: Message) -> None:
 @dp.message(Command('quiz'))
 @dp.message(F.text =='📝 Пройти тест')
 async def start_quiz(message: Message) -> None:
-    user_id = message.from_user.id if message.from_user.id else 'unknown_id'
+    user_id = message.from_user.id
     word = random.choice(WORDS)
+
 
     current_quiz_words[user_id] = word
 
+
     logger.info(
         'Quiz started | user_id=%s | word=%s',
-        user_id, word
+        user_id, word['english']
     )
+
 
     await message.answer(
         f'📝 Как переводиться слово: {word['english']}?'
     )
 
 
+@dp.message(Command('stats'))
+@dp.message(F.text == '📊 Моя статистика')
+async def send_stats(message: Message) -> None:
+    user_id =  message.from_user.id
+
+
+    if not user_id in user_stats:
+        await message.answer(
+            '📊 У тебя пока нет результатов.\n\n'
+            'Пройди первый тест через /quiz.'
+        )
+        return
+
+
+    stats = user_stats[user_id]
+    accuracy = round(stats['correct'] / stats['total'] * 100)
+
+
+    logger.info('Stats requested | user_id=%s', user_id)
+
+
+    await message.answer(
+        "📊 Твоя статистика\n\n"
+        f"✅ Правильных ответов: {stats['correct']}\n"
+        f"📝 Всего попыток: {stats['total']}\n"
+        f"🎯 Точность: {accuracy}%"
+    )
+
+
 @dp.message(F.text)
 async def handle_text(message: Message) -> None:
     username = message.from_user.username if message.from_user.username else 'unknown'
-    user_id = message.from_user.id if message.from_user.id else 'unknown_id'
+    user_id = message.from_user.id
     text = message.text.strip()
+
 
     if user_id in current_quiz_words:
         word = current_quiz_words.pop(user_id)
         is_correct = text.lower() == word['russian'].lower()
+
+
+
+
+
+        if user_id not in user_stats:
+            user_stats[user_id] = {
+                'correct': 0,
+                'total': 0,
+            } 
+
+
+        stats = user_stats[user_id]
+        stats['total'] += 1
+
+         
+        if is_correct:
+            stats['correct'] += 1
+
 
         logger.info(
             "Quiz answered | user_id=%s | correct=%s",
             user_id,
             is_correct,
         )
+
 
         if is_correct:
 
@@ -130,13 +189,8 @@ async def handle_text(message: Message) -> None:
 
         return
     
-    logger.info(
-        'Text received | username = %s | text = %s',
-        username,
-        text    
-    )
 
-    await message.answer(f'Ты написал: {message.text}')
+    await message.answer('Не понял сообщение. Выбери действие на клавиатуре или используй /start.')
 
 
 async def main() -> None:
@@ -144,7 +198,8 @@ async def main() -> None:
         [
             BotCommand(command='start', description='Запустить бота'),
             BotCommand(command='card', description='Получить случайную карту'),
-            BotCommand(command='quiz',description='Проверить перевод слова')
+            BotCommand(command='quiz',description='Проверить перевод слова'),
+            BotCommand(command='stats', description='Посмотреть статистику')
         ]
     )
 
