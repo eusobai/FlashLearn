@@ -42,13 +42,13 @@ WORDS =[
     {"english": "friend", "russian": "друг"},
 ]
 
+current_quiz_words = {}
+
 main_keybord = ReplyKeyboardMarkup(
     keyboard=
         [ 
-        [
-            KeyboardButton(text='📚 Получить карточку')
-
-        ]
+        [KeyboardButton(text='📚 Получить карточку')],
+        [KeyboardButton(text = '📝 Пройти тест')]
         ],
     resize_keyboard = True,
     input_field_placeholder = 'Выбери действие',
@@ -62,8 +62,10 @@ async def cmd_start(message: Message) -> None:
         'The user is connected | username = %s', username
     )
     await message.answer(
-        "Привет! Я помогу тебе учить английский.\n\n"
-        "Нажми кнопку ниже, чтобы получить карточку.",
+        'Привет! Я помогу тебе учить английский.\n\n'
+        'Выбери действие ниже:\n'
+        '— Получить карточку\n'
+        '— Пройти тест',
         reply_markup= main_keybord, 
     )
 
@@ -85,16 +87,55 @@ async def send_card(message: Message) -> None:
         f'Перевод: {word['russian']}'
     )
 
-@dp.message()
-async def echo_text(message: Message) -> None:
-    username = message.from_user.username if message.from_user.username else 'unknown'
-    text = message.text
 
+@dp.message(Command('quiz'))
+@dp.message(F.text =='📝 Пройти тест')
+async def start_quiz(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user.id else 'unknown_id'
+    word = random.choice(WORDS)
+
+    current_quiz_words[user_id] = word
+
+    logger.info(
+        'Quiz started | user_id=%s | word=%s',
+        user_id, word
+    )
+
+    await message.answer(
+        f'📝 Как переводиться слово: {word['english']}?'
+    )
+
+
+@dp.message(F.text)
+async def handle_text(message: Message) -> None:
+    username = message.from_user.username if message.from_user.username else 'unknown'
+    user_id = message.from_user.id if message.from_user.id else 'unknown_id'
+    text = message.text.strip()
+
+    if user_id in current_quiz_words:
+        word = current_quiz_words.pop(user_id)
+        is_correct = text.lower() == word['russian'].lower()
+
+        logger.info(
+            "Quiz answered | user_id=%s | correct=%s",
+            user_id,
+            is_correct,
+        )
+
+        if is_correct:
+
+            await message.answer('✅ Правильно! Молодец.')
+        else:
+            await message.answer(f'❌ Пока нет. Правильный ответ: {word['russian']}')
+
+        return
+    
     logger.info(
         'Text received | username = %s | text = %s',
         username,
         text    
     )
+
     await message.answer(f'Ты написал: {message.text}')
 
 
@@ -103,6 +144,7 @@ async def main() -> None:
         [
             BotCommand(command='start', description='Запустить бота'),
             BotCommand(command='card', description='Получить случайную карту'),
+            BotCommand(command='quiz',description='Проверить перевод слова')
         ]
     )
 
