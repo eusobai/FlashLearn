@@ -8,6 +8,8 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command 
 from aiogram.types import Message, BotCommand, KeyboardButton, ReplyKeyboardMarkup
 
+from database import init_db, get_stats, update_stats
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -43,10 +45,9 @@ WORDS =[
 ]
 
 current_quiz_words = {}
-user_stats = {}
 
 
-main_keybord = ReplyKeyboardMarkup(
+main_keyboard = ReplyKeyboardMarkup(
     keyboard=
         [ 
         [KeyboardButton(text='📚 Получить карточку')],
@@ -69,7 +70,7 @@ async def cmd_start(message: Message) -> None:
     await message.answer(
         "Привет! Я помогу тебе учить английский.\n\n"
         "Выбери действие на клавиатуре ниже.",
-        reply_markup= main_keybord, 
+        reply_markup= main_keyboard, 
     )
 
 
@@ -117,11 +118,12 @@ async def start_quiz(message: Message) -> None:
 
 @dp.message(Command('stats'))
 @dp.message(F.text == '📊 Моя статистика')
-async def send_stats(message: Message) -> None:
+async def show_stats(message: Message) -> None:
     user_id =  message.from_user.id
 
+    stats = get_stats(user_id)
 
-    if not user_id in user_stats:
+    if stats is None:
         await message.answer(
             '📊 У тебя пока нет результатов.\n\n'
             'Пройди первый тест через /quiz.'
@@ -129,8 +131,8 @@ async def send_stats(message: Message) -> None:
         return
 
 
-    stats = user_stats[user_id]
-    accuracy = round(stats['correct'] / stats['total'] * 100)
+    correct, total = stats
+    accuracy = round(correct / total * 100)
 
 
     logger.info('Stats requested | user_id=%s', user_id)
@@ -138,15 +140,14 @@ async def send_stats(message: Message) -> None:
 
     await message.answer(
         "📊 Твоя статистика\n\n"
-        f"✅ Правильных ответов: {stats['correct']}\n"
-        f"📝 Всего попыток: {stats['total']}\n"
+        f"✅ Правильных ответов: {correct}\n"
+        f"📝 Всего попыток: {total}\n"
         f"🎯 Точность: {accuracy}%"
     )
 
 
 @dp.message(F.text)
 async def handle_text(message: Message) -> None:
-    username = message.from_user.username if message.from_user.username else 'unknown'
     user_id = message.from_user.id
     text = message.text.strip()
 
@@ -154,24 +155,8 @@ async def handle_text(message: Message) -> None:
     if user_id in current_quiz_words:
         word = current_quiz_words.pop(user_id)
         is_correct = text.lower() == word['russian'].lower()
-
-
-
-
-
-        if user_id not in user_stats:
-            user_stats[user_id] = {
-                'correct': 0,
-                'total': 0,
-            } 
-
-
-        stats = user_stats[user_id]
-        stats['total'] += 1
-
-         
-        if is_correct:
-            stats['correct'] += 1
+        
+        update_stats(user_id, is_correct) 
 
 
         logger.info(
@@ -194,6 +179,10 @@ async def handle_text(message: Message) -> None:
 
 
 async def main() -> None:
+
+    init_db()
+
+
     await bot.set_my_commands(
         [
             BotCommand(command='start', description='Запустить бота'),
