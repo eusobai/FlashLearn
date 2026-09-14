@@ -16,6 +16,18 @@ def init_db() -> None:
             '''
         )
 
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS words (
+                id INTEGER PRIMARY KEY,
+                english TEXT NOT NULL,
+                russian TEXT NOT NULL
+            )
+            '''
+        ) 
+
+
+
 
 def update_stats(user_id: int, is_correct: bool) -> None: 
     correct_increment = 1 if is_correct else 0
@@ -46,3 +58,5 @@ def get_stats(user_id: int):
         )
 
         return cursor.fetchone()
+
+

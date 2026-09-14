@@ -3,6 +3,7 @@ import asyncio
 import random
 import logging
 from pathlib import Path
+import json
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command 
@@ -11,6 +12,7 @@ from aiogram.types import Message, BotCommand, KeyboardButton, ReplyKeyboardMark
 from database import init_db, get_stats, update_stats
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -36,13 +38,9 @@ if not BOT_TOKEN:
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-WORDS =[
-    {"english": "apple", "russian": "яблоко"},
-    {"english": "book", "russian": "книга"},
-    {"english": "house", "russian": "дом"},
-    {"english": "water", "russian": "вода"},
-    {"english": "friend", "russian": "друг"},
-]
+
+with open('words.json', 'r', encoding = 'utf-8') as file:
+    WORDS = json.load(file)
 
 current_quiz_words = {}
 
@@ -154,7 +152,12 @@ async def handle_text(message: Message) -> None:
 
     if user_id in current_quiz_words:
         word = current_quiz_words.pop(user_id)
-        is_correct = text.lower() == word['russian'].lower()
+
+        correct_answers =[
+            answer.strip().lower()
+            for answer in word['russian'].split(',')
+        ]
+        is_correct = text.lower() in correct_answers
         
         update_stats(user_id, is_correct) 
 
@@ -167,10 +170,25 @@ async def handle_text(message: Message) -> None:
 
 
         if is_correct:
+            other_answers = [
+                answer
+                for answer in correct_answers
+                if answer != text
+            ]
 
-            await message.answer('✅ Правильно! Молодец.')
+            if other_answers:
+                await message.answer(
+                    "✅ Правильно!\n\n" 
+                    f"Другие варианты: {', '.join(other_answers)}"
+                )
+            else:
+                await message.answer('✅ Правильно! Молодец.')
+
         else:
-            await message.answer(f'❌ Пока нет. Правильный ответ: {word['russian']}')
+            await message.answer(
+                "❌ Неправильно.\n\n" 
+                f"Правильные ответы: {', '.join(correct_answers)}"
+                )
 
         return
     
