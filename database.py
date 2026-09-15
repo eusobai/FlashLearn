@@ -4,28 +4,62 @@ from pathlib import Path
 DB_PATH = Path(__file__).resolve().parent /'bot.db'
 
 
+def get_connection():
+    connection = sqlite3.connect(DB_PATH)
+    connection.execute("PRAGMA foreign_keys = ON")
+    return connection
+
+
 def init_db() -> None:
-    with sqlite3.connect(DB_PATH) as connection:
+    with get_connection() as connection:
+
+        connection.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY
+            )
+            '''
+        )
+
+
         connection.execute(
             '''
             CREATE TABLE IF NOT EXISTS user_stats (
                 user_id INTEGER PRIMARY KEY,
                 correct INTEGER NOT NULL DEFAULT 0,
-                total INTEGER NOT NULL DEFAULT 0
+                total INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (user_id) 
+                    REFERENCES users(user_id)
+                    ON DELETE CASCADE
             )
             '''
         )
 
+        
         connection.execute(
             '''
-            CREATE TABLE IF NOT EXISTS words (
-                id INTEGER PRIMARY KEY,
-                english TEXT NOT NULL,
-                russian TEXT NOT NULL
+            CREATE TABLE IF NOT EXISTS favourite_words (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                word TEXT NOT NULL,
+                translation TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                UNIQUE(user_id, word, translation) 
             )
             '''
         ) 
 
+
+
+def add_user(user_id: int) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            '''
+            INSERT OR IGNORE INTO users (user_id)
+            VALUES (?)
+            ''',
+            (user_id,)
+        )
 
 
 
@@ -33,7 +67,7 @@ def update_stats(user_id: int, is_correct: bool) -> None:
     correct_increment = 1 if is_correct else 0
 
 
-    with sqlite3.connect(DB_PATH) as connection:
+    with get_connection() as connection:
         connection.execute(
             
             '''
@@ -49,7 +83,7 @@ def update_stats(user_id: int, is_correct: bool) -> None:
 
 def get_stats(user_id: int):
 
-    with sqlite3.connect(DB_PATH) as connection:
+    with get_connection() as connection:
         cursor =  connection.execute(
             '''
             SELECT correct, total FROM user_stats WHERE user_id = ?
@@ -61,7 +95,7 @@ def get_stats(user_id: int):
 
 
 def reset_stats(user_id: int) -> None:
-    with sqlite3.connect(DB_PATH) as connection:
+    with get_connection() as connection:
         connection.execute(
             '''
             UPDATE user_stats SET correct = 0,total = 0
@@ -69,3 +103,6 @@ def reset_stats(user_id: int) -> None:
             ''',
             (user_id,)
     )
+
+# def add_fav_words(user_id: int, word:list) -> None:
+#     with sqlite3.connect(DB_PATH) as connection
