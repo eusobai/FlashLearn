@@ -9,7 +9,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command 
 from aiogram.types import Message, BotCommand, KeyboardButton, ReplyKeyboardMarkup
 
-from database import init_db, get_stats, update_stats
+from database import init_db, get_stats, update_stats, reset_stats
 
 from dotenv import load_dotenv
 
@@ -128,8 +128,19 @@ async def show_stats(message: Message) -> None:
         )
         return
 
-
+    
     correct, total = stats
+
+
+    if total == 0:
+        await message.answer(
+            '📊 У тебя пока нет результатов.\n\n'
+            'Пройди первый тест через /quiz.'
+
+        )   
+        return
+
+    
     accuracy = round(correct / total * 100)
 
 
@@ -140,8 +151,17 @@ async def show_stats(message: Message) -> None:
         "📊 Твоя статистика\n\n"
         f"✅ Правильных ответов: {correct}\n"
         f"📝 Всего попыток: {total}\n"
-        f"🎯 Точность: {accuracy}%"
+        f"🎯 Точность: {accuracy}% \n\n"
+        '🔄 Чтобы сбросить статистику, используй команду /reset_stats'
     )
+
+
+@dp.message(Command('reset_stats'))
+async def reset_user_stats(message: Message) -> None:
+    user_id = message.from_user.id
+
+    reset_stats(user_id)
+    await message.answer('Твоя статистика успешно сброшена!')
 
 
 @dp.message(F.text)

@@ -60,3 +60,12 @@ def get_stats(user_id: int):
         return cursor.fetchone()
 
 
+def reset_stats(user_id: int) -> None:
+    with sqlite3.connect(DB_PATH) as connection:
+        connection.execute(
+            '''
+            UPDATE user_stats SET correct = 0,total = 0
+            WHERE user_id = ?
+            ''',
+            (user_id,)
+    )
