@@ -16,7 +16,7 @@ def init_db() -> None:
         connection.execute(
             '''
             CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY
+                user_id INTEGER PRIMARY KEY UNIQUE
             )
             '''
         )
@@ -38,7 +38,7 @@ def init_db() -> None:
         
         connection.execute(
             '''
-            CREATE TABLE IF NOT EXISTS favourite_words (
+            CREATE TABLE IF NOT EXISTS favourite_word (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 word TEXT NOT NULL,
@@ -51,7 +51,7 @@ def init_db() -> None:
 
 
 
-def add_user(user_id: int) -> None:
+def add_user_to_db(user_id: int) -> None:
     with get_connection() as connection:
         connection.execute(
             '''
@@ -63,7 +63,7 @@ def add_user(user_id: int) -> None:
 
 
 
-def update_stats(user_id: int, is_correct: bool) -> None: 
+def update_stats_in_db(user_id: int, is_correct: bool) -> None: 
     correct_increment = 1 if is_correct else 0
 
 
@@ -81,7 +81,7 @@ def update_stats(user_id: int, is_correct: bool) -> None:
         )
 
 
-def get_stats(user_id: int):
+def get_stats_from_db(user_id: int):
 
     with get_connection() as connection:
         cursor =  connection.execute(
@@ -94,7 +94,7 @@ def get_stats(user_id: int):
         return cursor.fetchone()
 
 
-def reset_stats(user_id: int) -> None:
+def reset_stats_in_db(user_id: int) -> None:
     with get_connection() as connection:
         connection.execute(
             '''
@@ -104,5 +104,14 @@ def reset_stats(user_id: int) -> None:
             (user_id,)
     )
 
-# def add_fav_words(user_id: int, word:list) -> None:
-#     with sqlite3.connect(DB_PATH) as connection
+def add_fav_word_to_db(user_id: int, word: str, translation: str) -> None:
+    with get_connection() as connection:
+
+
+        connection.execute(
+            '''
+            INSERT OR IGNORE INTO favourite_word(user_id, word, translation)
+            VALUES(?,?,?)
+            ''',
+            (user_id, word, translation)
+        )

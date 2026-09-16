@@ -7,10 +7,25 @@ import json
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command 
-from aiogram.types import Message, BotCommand, KeyboardButton, ReplyKeyboardMarkup
 
-from database import init_db, get_stats, update_stats, reset_stats
+from aiogram.types import (
+    Message, 
+    BotCommand, 
+    KeyboardButton,
+    ReplyKeyboardMarkup, 
+    InlineKeyboardButton, 
+    InlineKeyboardMarkup,
+    CallbackQuery
+)   
 
+from database import (
+    init_db, 
+    add_user_to_db,
+    get_stats_from_db, 
+    update_stats_in_db, 
+    reset_stats_in_db,
+    add_fav_word_to_db
+)
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -42,6 +57,8 @@ dp = Dispatcher()
 with open('words.json', 'r', encoding = 'utf-8') as file:
     WORDS = json.load(file)
 
+
+
 current_quiz_words = {}
 
 
@@ -60,10 +77,13 @@ main_keyboard = ReplyKeyboardMarkup(
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     username = message.from_user.username if message.from_user.username else 'unknown'
+    user_id = message.from_user.id
 
+    add_user_to_db(user_id)
     logger.info(
         'The user is connected | username = %s', username
     )
+
 
     await message.answer(
         "Привет! Я помогу тебе учить английский.\n\n"
@@ -86,10 +106,22 @@ async def send_card(message: Message) -> None:
     )
 
 
+    favourite_button = InlineKeyboardButton(
+        text = '⭐ Добавить в избранное',
+        callback_data = f'favourite:{word['english']}'
+    )
+
+    favorite_keybord = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [favourite_button]
+        ]
+    )
+
     await message.answer(
         f'📚 Карточка\n\n'
         f'Английское слово: {word['english']}\n'
-        f'Перевод: {word['russian']}'
+        f'Перевод: {word['russian']}',
+        reply_markup= favorite_keybord
     )
 
 
@@ -119,7 +151,7 @@ async def start_quiz(message: Message) -> None:
 async def show_stats(message: Message) -> None:
     user_id =  message.from_user.id
 
-    stats = get_stats(user_id)
+    stats = get_stats_from_db(user_id)
 
     if stats is None:
         await message.answer(
@@ -160,8 +192,51 @@ async def show_stats(message: Message) -> None:
 async def reset_user_stats(message: Message) -> None:
     user_id = message.from_user.id
 
-    reset_stats(user_id)
+    reset_stats_in_db(user_id)
+
+
+    logger.info(
+        'The user statistics have been reset. | user_id = %s',
+        user_id
+    )
+
+
     await message.answer('Твоя статистика успешно сброшена!')
+
+
+
+@dp.callback_query(F.data.startswith('favourite:'))
+async def handle_add_favourite(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id
+
+    english_word = callback.data.split(':', 1)[1]
+    word = None
+
+    for item in WORDS:
+        if item['english'] == english_word:
+            word = item
+            break
+
+
+    if word is None:
+        await callback.answer("❌ Слово не найдено.")
+        return
+
+    add_fav_word_to_db(
+        user_id, 
+        word['english'], 
+        word['russian']
+    )
+
+    logger.info(
+        'The favourite word has been added | user_id=%s | word=%s | translation=%s',
+        user_id, 
+        word['english'], 
+        word['russian']
+    )
+    
+    await callback.answer("⭐ Добавлено в избранное!")
+
 
 
 @dp.message(F.text)
@@ -179,7 +254,7 @@ async def handle_text(message: Message) -> None:
         ]
         is_correct = text.lower() in correct_answers
         
-        update_stats(user_id, is_correct) 
+        update_stats_in_db(user_id, is_correct) 
 
 
         logger.info(
