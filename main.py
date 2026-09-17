@@ -541,7 +541,7 @@ async def main() -> None:
             BotCommand(command='card', description='Получить случайную карту'),
             BotCommand(command='quiz',description='Проверить перевод слова'),
             BotCommand(command='stats', description='Посмотреть статистику'),
-            BotCommand(command='favourites', description='Посмотреть избранных слов'),
+            BotCommand(command='favourites', description='Посмотреть избранные слова'),
         ]
     )
 
