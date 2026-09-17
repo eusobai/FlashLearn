@@ -106,7 +106,7 @@ def init_db() -> None:
         # translation — его перевод.        
         connection.execute(
             '''
-            CREATE TABLE IF NOT EXISTS favourite_word (
+            CREATE TABLE IF NOT EXISTS favourite_words (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 word TEXT NOT NULL,
@@ -242,8 +242,28 @@ def add_fav_word_to_db(
         # SQLite не создаст дубликат.
         connection.execute(
             '''
-            INSERT OR IGNORE INTO favourite_word(user_id, word, translation)
+            INSERT OR IGNORE INTO favourite_words(user_id, word, translation)
             VALUES(?,?,?)
             ''',
             (user_id, word, translation)
         )
+
+
+# =========================
+# ПОЛУЧЕНИЕ ИЗБРАННОГО СЛОВА 
+# =========================
+
+
+def get_fav_words_in_db(user_id: int):
+
+    with get_connection() as connection:
+
+        # Ищем избранных слов конкретного пользователя
+        cursor = connection.execute(
+            '''
+            SELECT word, translation FROM favourite_words WHERE user_id = ?
+            ''',
+            (user_id,)
+        )
+
+        return cursor.fetchall()

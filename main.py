@@ -38,7 +38,8 @@ from database import (
     get_stats_from_db, 
     update_stats_in_db, 
     reset_stats_in_db,
-    add_fav_word_to_db
+    add_fav_word_to_db,
+    get_fav_words_in_db,
 )
 
 # Загружает переменные из .env.
@@ -132,6 +133,7 @@ main_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text='📚 Получить карточку')],
         [KeyboardButton(text = '📝 Пройти тест')],
         [KeyboardButton(text = '📊 Моя статистика')],
+        [KeyboardButton(text='⭐ Избранные слова')]
         ],
     resize_keyboard = True,
     input_field_placeholder = 'Выбери действие',
@@ -296,6 +298,30 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
     await callback.answer("⭐ Добавлено в избранное!")
 
 
+@dp.message(F.text == '⭐ Избранные слова')
+@dp.message(Command('favourites'))
+async def get_fav_word(message: Message) -> None:
+    # Получаем ID пользователя.
+    user_id = message.from_user.id
+
+    # Получаем все избранные слова этого польщователя из бд.
+    fav_words = get_fav_words_in_db(user_id)
+
+    # Если избранных слов нет, сообщаем об этом пользователю.  
+    if not fav_words:
+        await message.answer(
+            'У тебя пока нет избранных слов.')
+        return
+    
+    # Создаем список слов для красивого сообщения
+    lines = []
+
+    for word,translation in fav_words:
+        lines.append( f'{word} - {translation}')
+
+    text = '⭐ Твои избранные слова: \n\n' + '\n'.join(lines)
+
+    await message.answer(text)
 # =========================
 # НАЧАЛО ТЕСТА
 # =========================
@@ -514,7 +540,8 @@ async def main() -> None:
             BotCommand(command='start', description='Запустить бота'),
             BotCommand(command='card', description='Получить случайную карту'),
             BotCommand(command='quiz',description='Проверить перевод слова'),
-            BotCommand(command='stats', description='Посмотреть статистику')
+            BotCommand(command='stats', description='Посмотреть статистику'),
+            BotCommand(command='favourites', description='Посмотреть избранных слов'),
         ]
     )
 
