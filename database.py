@@ -2,120 +2,45 @@
 # ИМПОРТЫ
 # =========================
 
+# psycopg2 — библиотека, которая позволяет Python
+# подключаться и работать с PostgreSQL.
+import psycopg2
 
-import sqlite3
-from pathlib import Path
+# os позволяет получать значения переменных окружения.
+# Например, DATABASE_URL из файла .env.
+import os
 
-# Путь к файлу базы данных.
+# load_dotenv() загружает переменные из файла .env
+# в переменные окружения Python.
+from dotenv import load_dotenv 
+
+# Загружаем данные из файла .env
+load_dotenv()
+
+# Получаем адрес подключения к PostgreSQL.
 #
-# __file__ — путь к текущему файлу database.py.
-# resolve() превращает его в абсолютный путь.
-# parent — папка, в которой находится database.py.
+# В .env у нас находится примерно:
 #
-# В результате база bot.db будет находиться
-# в папке проекта рядом с database.py.
-DB_PATH = Path(__file__).resolve().parent /'bot.db'
+# DATABASE_URL=postgresql://...
+#
+# os.getenv() достаёт значение DATABASE_URL.
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 # =========================
 # ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ
 # =========================
 
 
+
 def get_connection():
-    # Открываем соединение с SQLite.
-    connection = sqlite3.connect(DB_PATH)
-
-    # Включаем поддержку FOREIGN KEY.
-    #
-    # Без этого SQLite не будет проверять связи
-    # между таблицами users, user_stats
-    # и favourite_word.
-    connection.execute("PRAGMA foreign_keys = ON")
-
-    return connection
+        
+    # Открываем соединение с PostgreSQL.
+    # psycopg2.connect() создаёт connection —
+    # соединение Python с PostgreSQL.
+    return psycopg2.connect(DATABASE_URL)
 
 
-# =========================
-# СОЗДАНИЕ ТАБЛИЦ
-# =========================
 
-
-def init_db() -> None:
-
-    # Открываем соединение с базой данных.
-    # После выхода из with изменения сохраняются,
-    # а соединение автоматически закрывается.
-    with get_connection() as connection:
-
-        # -------------------------
-        # Таблица пользователей
-        # -------------------------
-
-
-        # Храним Telegram ID пользователей.
-        #
-        # user_id — PRIMARY KEY, поэтому
-        # два одинаковых пользователя
-        # существовать не могут.
-        connection.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY UNIQUE
-            )
-            '''
-        )
-
-
-        # -------------------------
-        # Таблица статистики
-        # -------------------------
-
-
-        # Для каждого пользователя хранится:
-        # correct — количество правильных ответов;
-        # total — общее количество попыток.
-        #
-        # user_id одновременно является:
-        # PRIMARY KEY — у пользователя только одна строка статистики;
-        # FOREIGN KEY — пользователь должен существовать в таблице users.
-        connection.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS user_stats (
-                user_id INTEGER PRIMARY KEY,
-                correct INTEGER NOT NULL DEFAULT 0,
-                total INTEGER NOT NULL DEFAULT 0,
-                FOREIGN KEY (user_id) 
-                    REFERENCES users(user_id)
-                    ON DELETE CASCADE
-            )
-            '''
-        )
-
-
-        # -------------------------
-        # Таблица избранных слов
-        # -------------------------
-
-        # Храним слова, которые пользователь добавил в избранное.
-        #
-        # Один пользователь может иметь много избранных слов.
-        #
-        # id — уникальный номер записи;
-        # user_id — какому пользователю принадлежит слово;
-        # word — английское слово;
-        # translation — его перевод.        
-        connection.execute(
-            '''
-            CREATE TABLE IF NOT EXISTS favourite_words (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                word TEXT NOT NULL,
-                translation TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-                UNIQUE(user_id, word, translation) 
-            )
-            '''
-        ) 
 
 
 # =========================
@@ -124,22 +49,31 @@ def init_db() -> None:
 
 
 def add_user_to_db(user_id: int) -> None:
-
+    # Открываем соединение с PostgreSQL.
+    #
+    # with автоматически завершит работу
+    # с connection после выполнения блока.
     with get_connection() as connection:
 
-        # Добавляем пользователя в таблицу.
+        # cursor — объект, через который
+        # мы отправляем SQL-запросы в PostgreSQL.
         #
-        # INSERT OR IGNORE означает:
-        # если такой user_id уже существует,
-        # ничего не делать и не выдавать ошибку.
-        connection.execute(
+        # connection — это соединение с базой,
+        # cursor — инструмент для выполнения SQL.        
+        cursor = connection.cursor()
+        
+        # Добавляем пользователя в таблицу users.
+        cursor.execute(
             '''
-            INSERT OR IGNORE INTO users (user_id)
-            VALUES (?)
+            INSERT INTO users (user_id)
+            VALUES (%s)
+            ON CONFLICT DO NOTHING
             ''',
             (user_id,)
         )
 
+       # Закрываем cursor после выполнения запроса.
+        cursor.close()
 
 # =========================
 # ОБНОВЛЕНИЕ СТАТИСТИКИ
@@ -148,8 +82,15 @@ def add_user_to_db(user_id: int) -> None:
 
 def update_stats_in_db(user_id: int, is_correct: bool) -> None: 
 
-    # Если ответ правильный — увеличиваем correct на 1.
-    # Если неправильный — correct увеличивать не нужно.
+    # Если ответ правильный:
+    #
+    # is_correct = True
+    # correct_increment = 1
+    #
+    # Если ответ неправильный:
+    #
+    # is_correct = False
+    # correct_increment = 0
     correct_increment = 1 if is_correct else 0
 
 
@@ -160,18 +101,20 @@ def update_stats_in_db(user_id: int, is_correct: bool) -> None:
         #
         # Если статистика уже существует,
         # обновляем существующую строку.
-        connection.execute(
-            
+        cursor = connection.cursor() 
+
+        cursor.execute(    
             '''
             INSERT INTO user_stats (user_id, correct, total)
-            VALUES (?, ?, 1)
+            VALUES (%s, %s, 1)
             ON CONFLICT(user_id) DO UPDATE SET
-                correct = correct + excluded.correct,
-                total = total + 1
+                correct = user_stats.correct + EXCLUDED.correct,
+                total = user_stats.total + 1
             ''',
             (user_id, correct_increment),
         )
 
+        cursor.close()
 
 # =========================
 # ПОЛУЧЕНИЕ СТАТИСТИКИ
@@ -182,10 +125,12 @@ def get_stats_from_db(user_id: int):
 
     with get_connection() as connection:
 
+        cursor = connection.cursor()  
+        
         # Ищем статистику конкретного пользователя.
-        cursor =  connection.execute(
+        cursor.execute(
             '''
-            SELECT correct, total FROM user_stats WHERE user_id = ?
+            SELECT correct, total FROM user_stats WHERE user_id = %s
             ''',
             (user_id,),
         )
@@ -197,8 +142,12 @@ def get_stats_from_db(user_id: int):
         #
         # Если записи нет:
         # None
-        return cursor.fetchone()
+        result = cursor.fetchone()
 
+        cursor.close()
+
+       # Возвращаем результат в main.py.
+        return result
 
 # =========================
 # СБРОС СТАТИСТИКИ
@@ -209,11 +158,13 @@ def reset_stats_in_db(user_id: int) -> None:
 
     with get_connection() as connection:
 
+        cursor = connection.cursor()
+
         # Обнуляем статистику только конкретного пользователя.
-        connection.execute(
+        cursor.execute(
             '''
             UPDATE user_stats SET correct = 0,total = 0
-            WHERE user_id = ?
+            WHERE user_id = %s
             ''',
             (user_id,)
     )
@@ -232,22 +183,23 @@ def add_fav_word_to_db(
 
     with get_connection() as connection:
 
+        cursor = connection.cursor()
+
         # Сохраняем:
+        #
         # ID пользователя,
         # английское слово,
         # перевод.
-        #
-        # INSERT OR IGNORE означает:
-        # если точно такая запись уже существует,
-        # SQLite не создаст дубликат.
-        connection.execute(
+        cursor.execute(
             '''
-            INSERT OR IGNORE INTO favourite_words(user_id, word, translation)
-            VALUES(?,?,?)
+            INSERT INTO favourite_words(user_id, word, translation)
+            VALUES( %s, %s, %s )
+            ON CONFLICT DO NOTHING
             ''',
             (user_id, word, translation)
         )
 
+        cursor.close()
 
 # =========================
 # ПОЛУЧЕНИЕ ИЗБРАННОГО СЛОВА 
@@ -259,11 +211,17 @@ def get_fav_words_in_db(user_id: int):
     with get_connection() as connection:
 
         # Ищем избранных слов конкретного пользователя
-        cursor = connection.execute(
+        cursor = connection.cursor()
+        
+        cursor.execute(
             '''
-            SELECT word, translation FROM favourite_words WHERE user_id = ?
+            SELECT word, translation FROM favourite_words WHERE user_id = %s 
             ''',
             (user_id,)
         )
 
-        return cursor.fetchall()
+        result = cursor.fetchall()
+        
+        cursor.close()
+    
+        return result

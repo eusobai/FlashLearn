@@ -33,7 +33,6 @@ from aiogram.types import (
 
 # Функции для работы с базой данных.
 from database import (
-    init_db, 
     add_user_to_db,
     get_stats_from_db, 
     update_stats_in_db, 
@@ -163,7 +162,7 @@ async def cmd_start(message: Message) -> None:
 
 
     logger.info(
-        'The user is connected | username = %s', username
+        'The user is connected | username=%s | user_id=%s', username, user_id
     )
 
 
@@ -190,7 +189,7 @@ async def send_card(message: Message) -> None:
 
 
     logger.info(
-        'Card sent | username = %s | word = %s',
+        'Card sent | username=%s | word=%s',
         username,
         word["english"]
     )
@@ -430,7 +429,7 @@ async def reset_user_stats(message: Message) -> None:
 
 
     logger.info(
-        'The user statistics have been reset. | user_id = %s',
+        'The user statistics have been reset. | user_id=%s',
         user_id
     )
 
@@ -529,9 +528,6 @@ async def handle_text(message: Message) -> None:
 
 
 async def main() -> None:
-
-    # Создаём таблицы БД при запуске бота.
-    init_db()
 
     # Регистрируем команды, которые Telegram
     # будет показывать пользователю.
