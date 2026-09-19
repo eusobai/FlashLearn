@@ -13,7 +13,7 @@ import json
 from aiogram import Bot, Dispatcher, F
 
 # Фильтры для команд Telegram.
-from aiogram.filters import CommandStart, Command 
+from aiogram.filters import CommandStart, Command
 
 # Типы Telegram-объектов:
 # Message — обычное сообщение,
@@ -22,20 +22,20 @@ from aiogram.filters import CommandStart, Command
 # InlineKeyboardButton и InlineKeyboardMarkup — inline-кнопки,
 # CallbackQuery — нажатие inline-кнопки.
 from aiogram.types import (
-    Message, 
-    BotCommand, 
+    Message,
+    BotCommand,
     KeyboardButton,
-    ReplyKeyboardMarkup, 
-    InlineKeyboardButton, 
+    ReplyKeyboardMarkup,
+    InlineKeyboardButton,
     InlineKeyboardMarkup,
-    CallbackQuery
-)   
+    CallbackQuery,
+)
 
 # Функции для работы с базой данных.
 from database import (
     add_user_to_db,
-    get_stats_from_db, 
-    update_stats_in_db, 
+    get_stats_from_db,
+    update_stats_in_db,
     reset_stats_in_db,
     add_fav_word_to_db,
     get_fav_words_in_db,
@@ -57,19 +57,19 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent
 
 # Создаём папку для логов.
-LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 # =========================
 # НАСТРОЙКА ЛОГИРОВАНИЯ
 # =========================
 logging.basicConfig(
-    level= logging.INFO,
-    format= '%(asctime)s | %(levelname)s %(name)s %(message)s',
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s %(name)s %(message)s",
     handlers=[
-        logging.FileHandler(LOG_DIR / 'bot.log', encoding = 'utf-8'),
-        logging.StreamHandler()
-    ]
+        logging.FileHandler(LOG_DIR / "bot.log", encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
 )
 
 
@@ -83,9 +83,9 @@ logger = logging.getLogger(__name__)
 
 
 # Получаем токен бота из .env.
-BOT_TOKEN = os.getenv('BOT_TOKEN')
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise RuntimeError('Не найден BOT_TOKEN. Добавь его в файл .env')
+    raise RuntimeError("Не найден BOT_TOKEN. Добавь его в файл .env")
 
 
 # Создаём объект бота и диспетчер.
@@ -101,9 +101,8 @@ dp = Dispatcher()
 # Открываем JSON-файл со словами.
 # json.load() превращает JSON в обычный Python-список
 # словарей, с которым потом работает бот.
-with open('words.json', 'r', encoding = 'utf-8') as file:
+with open("words.json", "r", encoding="utf-8") as file:
     WORDS = json.load(file)
-
 
 
 # Здесь временно хранится слово,
@@ -127,16 +126,14 @@ current_quiz_words = {}
 # Это обычная клавиатура Telegram.
 # Её кнопки отправляют боту обычный текст.
 main_keyboard = ReplyKeyboardMarkup(
-    keyboard=
-        [ 
-        [KeyboardButton(text='📚 Получить карточку')],
-        [KeyboardButton(text = '📝 Пройти тест')],
-        [KeyboardButton(text = '📊 Моя статистика')],
-        [KeyboardButton(text='⭐ Избранные слова')]
-        ],
-    resize_keyboard = True,
-    input_field_placeholder = 'Выбери действие',
-
+    keyboard=[
+        [KeyboardButton(text="📚 Получить карточку")],
+        [KeyboardButton(text="📝 Пройти тест")],
+        [KeyboardButton(text="📊 Моя статистика")],
+        [KeyboardButton(text="⭐ Избранные слова")],
+    ],
+    resize_keyboard=True,
+    input_field_placeholder="Выбери действие",
 )
 
 
@@ -149,7 +146,7 @@ main_keyboard = ReplyKeyboardMarkup(
 async def cmd_start(message: Message) -> None:
     # Получаем имя пользователя.
     # Если username отсутствует, используем "unknown".
-    username = message.from_user.username if message.from_user.username else 'unknown'
+    username = message.from_user.username if message.from_user.username else "unknown"
 
     # Telegram ID нужен для связи пользователя
     # с его статистикой и избранными словами в БД.
@@ -160,17 +157,13 @@ async def cmd_start(message: Message) -> None:
     # не создаёт дубликат.
     add_user_to_db(user_id)
 
-
-    logger.info(
-        'The user is connected | username=%s | user_id=%s', username, user_id
-    )
-
+    logger.info("The user is connected | username=%s | user_id=%s", username, user_id)
 
     # Отправляем приветствие и показываем главную клавиатуру.
     await message.answer(
         "Привет! Я помогу тебе учить английский.\n\n"
         "Выбери действие на клавиатуре ниже.",
-        reply_markup= main_keyboard, 
+        reply_markup=main_keyboard,
     )
 
 
@@ -179,21 +172,15 @@ async def cmd_start(message: Message) -> None:
 # =========================
 
 
-@dp.message(Command('card'))
-@dp.message(F.text == '📚 Получить карточку')
+@dp.message(Command("card"))
+@dp.message(F.text == "📚 Получить карточку")
 async def send_card(message: Message) -> None:
     # Выбираем случайное слово из словаря.
     word = random.choice(WORDS)
 
-    username = message.from_user.username if message.from_user.username else 'unknown'
+    username = message.from_user.username if message.from_user.username else "unknown"
 
-
-    logger.info(
-        'Card sent | username=%s | word=%s',
-        username,
-        word["english"]
-    )
-
+    logger.info("Card sent | username=%s | word=%s", username, word["english"])
 
     # Создаём inline-кнопку.
     #
@@ -208,25 +195,18 @@ async def send_card(message: Message) -> None:
     # Благодаря этому бот знает,
     # какое слово нужно добавить в избранное.
     favourite_button = InlineKeyboardButton(
-        text = '⭐ Добавить в избранное',
-        callback_data = f'favourite:{word['english']}'
+        text="⭐ Добавить в избранное", callback_data=f"favourite:{word['english']}"
     )
-
 
     # Создаём inline-клавиатуру и помещаем кнопку в неё.
-    favorite_keybord = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [favourite_button]
-        ]
-    )
-
+    favorite_keybord = InlineKeyboardMarkup(inline_keyboard=[[favourite_button]])
 
     # Отправляем карточку и прикрепляем inline-кнопку.
     await message.answer(
-        f'📚 Карточка\n\n'
-        f'Английское слово: {word['english']}\n'
-        f'Перевод: {word['russian']}',
-        reply_markup= favorite_keybord
+        f"📚 Карточка\n\n"
+        f"Английское слово: {word['english']}\n"
+        f"Перевод: {word['russian']}",
+        reply_markup=favorite_keybord,
     )
 
 
@@ -234,14 +214,14 @@ async def send_card(message: Message) -> None:
 # ДОБАВЛЕНИЕ В ИЗБРАННОЕ
 # =========================
 
+
 # Обработчик срабатывает, когда пользователь нажимает
 # inline-кнопку, у которой callback_data начинается с "favourite:".
-@dp.callback_query(F.data.startswith('favourite:'))
+@dp.callback_query(F.data.startswith("favourite:"))
 async def handle_add_favourite(callback: CallbackQuery) -> None:
     # Получаем Telegram ID пользователя,
     # который нажал кнопку.
     user_id = callback.from_user.id
-
 
     # Получаем callback_data.
     #
@@ -253,7 +233,7 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
     # ["favourite", "factory"]
     #
     # [1] берёт второй элемент — "factory".
-    english_word = callback.data.split(':', 1)[1]
+    english_word = callback.data.split(":", 1)[1]
 
     # Пока слово не найдено.
     word = None
@@ -262,10 +242,9 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
     # Нам нужен не только английский вариант,
     # но и русский перевод.
     for item in WORDS:
-        if item['english'] == english_word:
+        if item["english"] == english_word:
             word = item
             break
-
 
     # Если слово не найдено в JSON,
     # прекращаем выполнение обработчика.
@@ -273,32 +252,26 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
         await callback.answer("❌ Слово не найдено.")
         return
 
-
     # Сохраняем в БД:
     # ID пользователя,
     # английское слово,
     # перевод.
-    add_fav_word_to_db(
-        user_id, 
-        word['english'], 
-        word['russian']
-    )
+    add_fav_word_to_db(user_id, word["english"], word["russian"])
 
     logger.info(
-        'The favourite word has been added | user_id=%s | word=%s | translation=%s',
-        user_id, 
-        word['english'], 
-        word['russian']
+        "The favourite word has been added | user_id=%s | word=%s | translation=%s",
+        user_id,
+        word["english"],
+        word["russian"],
     )
-
 
     # Показываем пользователю небольшое уведомление
     # после успешного добавления.
     await callback.answer("⭐ Добавлено в избранное!")
 
 
-@dp.message(F.text == '⭐ Избранные слова')
-@dp.message(Command('favourites'))
+@dp.message(F.text == "⭐ Избранные слова")
+@dp.message(Command("favourites"))
 async def get_fav_word(message: Message) -> None:
     # Получаем ID пользователя.
     user_id = message.from_user.id
@@ -306,28 +279,29 @@ async def get_fav_word(message: Message) -> None:
     # Получаем все избранные слова этого польщователя из бд.
     fav_words = get_fav_words_in_db(user_id)
 
-    # Если избранных слов нет, сообщаем об этом пользователю.  
+    # Если избранных слов нет, сообщаем об этом пользователю.
     if not fav_words:
-        await message.answer(
-            'У тебя пока нет избранных слов.')
+        await message.answer("У тебя пока нет избранных слов.")
         return
-    
+
     # Создаем список слов для красивого сообщения
     lines = []
 
-    for word,translation in fav_words:
-        lines.append( f'{word} - {translation}')
+    for word, translation in fav_words:
+        lines.append(f"{word} - {translation}")
 
-    text = '⭐ Твои избранные слова: \n\n' + '\n'.join(lines)
+    text = "⭐ Твои избранные слова: \n\n" + "\n".join(lines)
 
     await message.answer(text)
+
+
 # =========================
 # НАЧАЛО ТЕСТА
 # =========================
 
 
-@dp.message(Command('quiz'))
-@dp.message(F.text =='📝 Пройти тест')
+@dp.message(Command("quiz"))
+@dp.message(F.text == "📝 Пройти тест")
 async def start_quiz(message: Message) -> None:
     # Получаем ID пользователя.
     user_id = message.from_user.id
@@ -341,27 +315,21 @@ async def start_quiz(message: Message) -> None:
     # бот понял, какое слово он должен проверить.
     current_quiz_words[user_id] = word
 
-
-    logger.info(
-        'Quiz started | user_id=%s | word=%s',
-        user_id, word['english']
-    )
+    logger.info("Quiz started | user_id=%s | word=%s", user_id, word["english"])
 
     # Отправляем пользователю вопрос.
-    await message.answer(
-        f'📝 Как переводиться слово: {word['english']}?'
-    )
+    await message.answer(f"📝 Как переводиться слово: {word['english']}?")
 
 
 # =========================
 # СТАТИСТИКА
 # =========================
-@dp.message(Command('stats'))
-@dp.message(F.text == '📊 Моя статистика')
+@dp.message(Command("stats"))
+@dp.message(F.text == "📊 Моя статистика")
 async def show_stats(message: Message) -> None:
     # Получаем ID пользователя,
     # чтобы загрузить именно его статистику.
-    user_id =  message.from_user.id
+    user_id = message.from_user.id
 
     # Получаем из БД количество правильных ответов
     # и общее количество попыток.
@@ -371,11 +339,9 @@ async def show_stats(message: Message) -> None:
     # пользователь пока не проходил тесты.
     if stats is None:
         await message.answer(
-            '📊 У тебя пока нет результатов.\n\n'
-            'Пройди первый тест через /quiz.'
+            "📊 У тебя пока нет результатов.\n\n" "Пройди первый тест через /quiz."
         )
         return
-
 
     # Распаковываем результат SELECT.
     #
@@ -391,18 +357,14 @@ async def show_stats(message: Message) -> None:
     # не пытаемся делить на ноль.
     if total == 0:
         await message.answer(
-            '📊 У тебя пока нет результатов.\n\n'
-            'Пройди первый тест через /quiz.'
-
-        )   
+            "📊 У тебя пока нет результатов.\n\n" "Пройди первый тест через /quiz."
+        )
         return
-
 
     # Вычисляем процент правильных ответов.
     accuracy = round(correct / total * 100)
 
-
-    logger.info('Stats requested | user_id=%s', user_id)
+    logger.info("Stats requested | user_id=%s", user_id)
 
     # Показываем статистику пользователю.
     await message.answer(
@@ -410,7 +372,7 @@ async def show_stats(message: Message) -> None:
         f"✅ Правильных ответов: {correct}\n"
         f"📝 Всего попыток: {total}\n"
         f"🎯 Точность: {accuracy}% \n\n"
-        '🔄 Чтобы сбросить статистику, используй команду /reset_stats'
+        "🔄 Чтобы сбросить статистику, используй команду /reset_stats"
     )
 
 
@@ -419,7 +381,7 @@ async def show_stats(message: Message) -> None:
 # =========================
 
 
-@dp.message(Command('reset_stats'))
+@dp.message(Command("reset_stats"))
 async def reset_user_stats(message: Message) -> None:
     # Определяем, статистику какого пользователя нужно сбросить.
     user_id = message.from_user.id
@@ -427,14 +389,9 @@ async def reset_user_stats(message: Message) -> None:
     # Передаём ID пользователя в функцию БД.
     reset_stats_in_db(user_id)
 
+    logger.info("The user statistics have been reset. | user_id=%s", user_id)
 
-    logger.info(
-        'The user statistics have been reset. | user_id=%s',
-        user_id
-    )
-
-
-    await message.answer('Твоя статистика успешно сброшена!')
+    await message.answer("Твоя статистика успешно сброшена!")
 
 
 # =========================
@@ -466,8 +423,7 @@ async def handle_text(message: Message) -> None:
         # strip() убирает пробелы.
         # lower() приводит всё к нижнему регистру.
         correct_answers = [
-            answer.strip().lower()
-            for answer in word['russian'].split(',')
+            answer.strip().lower() for answer in word["russian"].split(",")
         ]
 
         # Проверяем, находится ли ответ пользователя
@@ -475,8 +431,7 @@ async def handle_text(message: Message) -> None:
         is_correct = text.lower() in correct_answers
 
         # Обновляем статистику пользователя в БД.
-        update_stats_in_db(user_id, is_correct) 
-
+        update_stats_in_db(user_id, is_correct)
 
         logger.info(
             "Quiz answered | user_id=%s | correct=%s",
@@ -488,38 +443,32 @@ async def handle_text(message: Message) -> None:
         if is_correct:
             # Находим все правильные варианты,
             # кроме того, который уже написал пользователь.
-            other_answers = [
-                answer
-                for answer in correct_answers
-                if answer != text
-            ]
-      
-            
+            other_answers = [answer for answer in correct_answers if answer != text]
+
             # Если есть другие допустимые переводы,
             # показываем их пользователю.
             if other_answers:
                 await message.answer(
-                    "✅ Правильно!\n\n" 
-                    f"Другие варианты: {', '.join(other_answers)}"
+                    "✅ Правильно!\n\n" f"Другие варианты: {', '.join(other_answers)}"
                 )
             else:
-                await message.answer('✅ Правильно! Молодец.')
+                await message.answer("✅ Правильно! Молодец.")
 
         # Если ответ неправильный.
         else:
             await message.answer(
-                "❌ Неправильно.\n\n" 
-                f"Правильные ответы: {', '.join(correct_answers)}"
-                )
-            
+                "❌ Неправильно.\n\n" f"Правильные ответы: {', '.join(correct_answers)}"
+            )
+
         # Останавливаем обработчик,
         # чтобы сообщение не пошло дальше.
         return
-    
+
     # Если пользователь не отвечает на активный тест,
     # бот сообщает, что не знает, что делать с сообщением.
-    await message.answer('Не понял сообщение. Выбери действие на клавиатуре или используй /start.')
-
+    await message.answer(
+        "Не понял сообщение. Выбери действие на клавиатуре или используй /start."
+    )
 
 
 # =========================
@@ -533,20 +482,20 @@ async def main() -> None:
     # будет показывать пользователю.
     await bot.set_my_commands(
         [
-            BotCommand(command='start', description='Запустить бота'),
-            BotCommand(command='card', description='Получить случайную карту'),
-            BotCommand(command='quiz',description='Проверить перевод слова'),
-            BotCommand(command='stats', description='Посмотреть статистику'),
-            BotCommand(command='favourites', description='Посмотреть избранные слова'),
+            BotCommand(command="start", description="Запустить бота"),
+            BotCommand(command="card", description="Получить случайную карту"),
+            BotCommand(command="quiz", description="Проверить перевод слова"),
+            BotCommand(command="stats", description="Посмотреть статистику"),
+            BotCommand(command="favourites", description="Посмотреть избранные слова"),
         ]
     )
 
-    logger.info('Bot запустился')
+    logger.info("Bot запустился")
 
     # Запускаем бота и начинаем получать сообщения
     # от Telegram.
     await dp.start_polling(bot)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
