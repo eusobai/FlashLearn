@@ -1,4 +1,4 @@
-name: Deploy FlashLearn
+name: Test SSH
 
 on:
   push:
@@ -6,20 +6,23 @@ on:
       - main
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Test SSH connection
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SILLY_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/silly_key
+          chmod 600 ~/.ssh/silly_key
 
-      - name: Upload files to Silly Development
-        uses: ChenjxJames/SFTP-Deploy-Action@v1.3.2
-        with:
-          username: usobaiev.8fca0402
-          server: node1.sillydev.co.uk
-          port: 2022
-          ssh_private_key: ${{ secrets.SILLY_SSH_PRIVATE_KEY }}
-          local_path: ./*
-          remote_path: /home/container
-          args: "-o ConnectTimeout=10"
+          ssh-keygen -y -f ~/.ssh/silly_key > /dev/null
+
+          ssh -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=10 \
+              -p 2022 \
+              -i ~/.ssh/silly_key \
+              usobaiev.8fca0402@node1.sillydev.co.uk \
+              "echo SSH_OK"
