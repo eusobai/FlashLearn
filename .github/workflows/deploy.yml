@@ -6,11 +6,14 @@ on:
       - main
 
 jobs:
-  test:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test SFTP connection
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload files to Silly Development
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SILLY_SSH_PRIVATE_KEY }}
         run: |
@@ -21,10 +24,13 @@ jobs:
           sftp \
             -o StrictHostKeyChecking=no \
             -o ConnectTimeout=10 \
-            -P 2022 \
             -i ~/.ssh/silly_key \
+            -P 2022 \
             usobaiev.8fca0402@node1.sillydev.co.uk << 'EOF'
-          pwd
-          ls
+          put main.py /home/container/main.py
+          put database.py /home/container/database.py
+          put words.json /home/container/words.json
+          put requirements.txt /home/container/requirements.txt
+          put Procfile /home/container/Procfile
           bye
           EOF
