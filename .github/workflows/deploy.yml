@@ -1,4 +1,4 @@
-name: Test SSH
+name: Test SFTP
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test SSH connection
+      - name: Test SFTP connection
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SILLY_SSH_PRIVATE_KEY }}
         run: |
@@ -18,11 +18,13 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/silly_key
           chmod 600 ~/.ssh/silly_key
 
-          ssh-keygen -y -f ~/.ssh/silly_key > /dev/null
-
-          ssh -o StrictHostKeyChecking=no \
-              -o ConnectTimeout=10 \
-              -p 2022 \
-              -i ~/.ssh/silly_key \
-              usobaiev.8fca0402@node1.sillydev.co.uk \
-              "echo SSH_OK"
+          sftp \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=10 \
+            -P 2022 \
+            -i ~/.ssh/silly_key \
+            usobaiev.8fca0402@node1.sillydev.co.uk << 'EOF'
+          pwd
+          ls
+          bye
+          EOF
