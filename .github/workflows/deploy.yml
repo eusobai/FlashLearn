@@ -1,1 +1,25 @@
+name: Deploy FlashLearn
 
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload files to Silly Development
+        uses: ChenjxJames/SFTP-Deploy-Action@v1.3.2
+        with:
+          username: usobaiev.8fca0402
+          server: node1.sillydev.co.uk
+          port: 2022
+          ssh_private_key: ${{ secrets.SILLY_SSH_PRIVATE_KEY }}
+          local_path: ./*
+          remote_path: /home/container
+          args: "-o ConnectTimeout=10"
