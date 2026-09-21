@@ -141,6 +141,18 @@ main_keyboard = ReplyKeyboardMarkup(
 # /START
 # =========================
 
+@dp.message(Command('help'))
+async def cmd_help(message:Message) -> None:
+    await message.answer(
+        "📚 Что я умею:\n\n"
+        "📚 Получить карточку — получить случайное английское слово.\n"
+        "📝 Пройти тест — проверить свои знания.\n"
+        "📊 Моя статистика — посмотреть результат тестов.\n"
+        "⭐ Избранные слова — посмотреть сохранённые слова.\n\n"
+        "/start — открыть главное меню.\n"
+        "/help — показать эту справку."
+    )
+
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
@@ -165,6 +177,11 @@ async def cmd_start(message: Message) -> None:
         "Выбери действие на клавиатуре ниже.",
         reply_markup=main_keyboard,
     )
+
+
+# =========================
+# /HELP
+# =========================
 
 
 # =========================
