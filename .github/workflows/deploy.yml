@@ -34,3 +34,12 @@ jobs:
           put Procfile Procfile
           bye
           EOF
+
+      - name: Test Silly Development API
+        env:
+          SILLY_API_KEY: ${{ secrets.SILLY_API_KEY }}
+        run: |
+          curl -i \
+            -H "Authorization: Bearer $SILLY_API_KEY" \
+            -H "Accept: Application/vnd.pterodactyl.v1+json" \
+            "https://sillydev.co.uk/api/client/servers/8fca0402"
