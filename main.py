@@ -64,14 +64,15 @@ LOG_DIR.mkdir(exist_ok=True)
 # НАСТРОЙКА ЛОГИРОВАНИЯ
 # =========================
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s %(name)s %(message)s",
+    level = logging.INFO,
+    format = "%(asctime)s | %(levelname)s %(name)s %(message)s",
     handlers=[
         logging.FileHandler(LOG_DIR / "bot.log", encoding="utf-8"),
         logging.StreamHandler(),
     ],
 )
 
+logging.getLogger('aiogram').setLevel(logging.WARNING)
 
 # Создаём logger для записи событий работы бота.
 logger = logging.getLogger(__name__)
@@ -141,18 +142,6 @@ main_keyboard = ReplyKeyboardMarkup(
 # /START
 # =========================
 
-@dp.message(Command('help'))
-async def cmd_help(message:Message) -> None:
-    await message.answer(
-        "📚 Что я умею:\n\n"
-        "📚 Получить карточку — получить случайное английское слово.\n"
-        "📝 Пройти тест — проверить свои знания.\n"
-        "📊 Моя статистика — посмотреть результат тестов.\n"
-        "⭐ Избранные слова — посмотреть сохранённые слова.\n\n"
-        "/start — открыть главное меню.\n"
-        "/help — показать эту справку."
-    )
-
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
@@ -182,6 +171,20 @@ async def cmd_start(message: Message) -> None:
 # =========================
 # /HELP
 # =========================
+
+
+@dp.message(Command('help'))
+async def cmd_help(message:Message) -> None:
+    await message.answer(
+        "📚 Что я умею:\n\n"
+        "📚 Получить карточку — получить случайное английское слово.\n"
+        "📝 Пройти тест — проверить свои знания.\n"
+        "📊 Моя статистика — посмотреть результат тестов.\n"
+        "⭐ Избранные слова — посмотреть сохранённые слова.\n\n"
+        "/start — открыть главное меню.\n"
+        "/help — показать эту справку."
+    )
+
 
 
 # =========================
