@@ -35,11 +35,14 @@ jobs:
           bye
           EOF
 
-      - name: Test Silly Development API
+      - name: Restart FlashLearn server
         env:
           SILLY_API_KEY: ${{ secrets.SILLY_API_KEY }}
         run: |
-          curl -i \
+          curl --fail-with-body -i \
+            -X POST \
             -H "Authorization: Bearer $SILLY_API_KEY" \
             -H "Accept: Application/vnd.pterodactyl.v1+json" \
-            "https://sillydev.co.uk/panel/api/client/servers/8fca0402"
+            -H "Content-Type: application/json" \
+            -d '{"signal":"restart"}' \
+            "https://sillydev.co.uk/panel/api/client/servers/8fca0402/power"
