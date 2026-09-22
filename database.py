@@ -6,6 +6,14 @@
 # подключаться и работать с PostgreSQL.
 import psycopg2
 
+# RealDictCursor возвращает строки в виде объектов,
+# с которыми можно обращаться по названию столбца.
+#
+# Например:
+# word["english"]
+# word["russian"]
+from psycopg2.extras import RealDictCursor
+
 # os позволяет получать значения переменных окружения.
 # Например, DATABASE_URL из файла .env.
 import os
@@ -40,22 +48,45 @@ def get_connection():
 
 
 # =========================
-# ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
+# ПОЛУЧЕНИЕ СЛОВ
 # =========================
 
-
-def add_user_to_db(user_id: int) -> None:
+def get_words():
     # Открываем соединение с PostgreSQL.
     #
     # with автоматически завершит работу
-    # с connection после выполнения блока.
+    # с connection после выполнения блока.  
     with get_connection() as connection:
-
+        
         # cursor — объект, через который
         # мы отправляем SQL-запросы в PostgreSQL.
         #
         # connection — это соединение с базой,
         # cursor — инструмент для выполнения SQL.
+        cursor = connection.cursor(cursor_factory = RealDictCursor)
+        cursor.execute(
+            """
+            SELECT * 
+            FROM words
+            ORDER BY id
+            """
+        )
+
+        result = cursor.fetchall()
+        cursor.close()
+
+        return result
+
+    
+
+# =========================
+# ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
+# =========================
+
+
+def add_user_to_db(user_id: int) -> None:
+
+    with get_connection() as connection:
         cursor = connection.cursor()
 
         # Добавляем пользователя в таблицу users.
@@ -161,12 +192,14 @@ def reset_stats_in_db(user_id: int) -> None:
         # Обнуляем статистику только конкретного пользователя.
         cursor.execute(
             """
-            UPDATE user_stats SET correct = 0,total = 0
+            UPDATE user_stats 
+            SET correct = 0, total = 0
             WHERE user_id = %s
             """,
             (user_id,),
         )
 
+        cursor.close()
 
 # =========================
 # ДОБАВЛЕНИЕ В ИЗБРАННОЕ
@@ -205,7 +238,7 @@ def get_fav_words_in_db(user_id: int):
 
     with get_connection() as connection:
 
-        # Ищем избранных слов конкретного пользователя
+        # Ищем избранные слова конкретного пользователя.
         cursor = connection.cursor()
 
         cursor.execute(

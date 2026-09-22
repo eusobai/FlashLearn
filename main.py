@@ -7,7 +7,6 @@ import asyncio
 import random
 import logging
 from pathlib import Path
-import json
 
 # Основные классы aiogram для создания бота и диспетчера.
 from aiogram import Bot, Dispatcher, F
@@ -33,6 +32,7 @@ from aiogram.types import (
 
 # Функции для работы с базой данных.
 from database import (
+    get_words,
     add_user_to_db,
     get_stats_from_db,
     update_stats_in_db,
@@ -97,26 +97,11 @@ dp = Dispatcher()
 # =========================
 # ЗАГРУЗКА СЛОВАРЯ
 # =========================
+WORDS = get_words()
 
 
-# Открываем JSON-файл со словами.
-# json.load() превращает JSON в обычный Python-список
-# словарей, с которым потом работает бот.
-with open("words.json", "r", encoding="utf-8") as file:
-    WORDS = json.load(file)
-
-
-# Здесь временно хранится слово,
-# на которое пользователь должен ответить в тесте.
-#
-# Формат примерно такой:
-#
-# {
-#     user_id: {
-#         "english": "factory",
-#         "russian": "завод"
-#     }
-# }
+# Здесь временно хранится текущее слово для каждого пользователя,
+# который проходит тест.
 current_quiz_words = {}
 
 
@@ -215,7 +200,7 @@ async def send_card(message: Message) -> None:
     # Благодаря этому бот знает,
     # какое слово нужно добавить в избранное.
     favourite_button = InlineKeyboardButton(
-        text="⭐ Добавить в избранное", callback_data=f"favourite:{word['english']}"
+        text = "⭐ Добавить в избранное", callback_data=f"favourite:{word['english']}"
     )
 
     # Создаём inline-клавиатуру и помещаем кнопку в неё.
@@ -266,7 +251,7 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
             word = item
             break
 
-    # Если слово не найдено в JSON,
+    # Если слово не найдено в БД,
     # прекращаем выполнение обработчика.
     if word is None:
         await callback.answer("❌ Слово не найдено.")
@@ -296,7 +281,7 @@ async def get_fav_word(message: Message) -> None:
     # Получаем ID пользователя.
     user_id = message.from_user.id
 
-    # Получаем все избранные слова этого польщователя из бд.
+    # Получаем все избранные слова этого польщователя из БД.
     fav_words = get_fav_words_in_db(user_id)
 
     # Если избранных слов нет, сообщаем об этом пользователю.
@@ -338,7 +323,7 @@ async def start_quiz(message: Message) -> None:
     logger.info("Quiz started | user_id=%s | word=%s", user_id, word["english"])
 
     # Отправляем пользователю вопрос.
-    await message.answer(f"📝 Как переводиться слово: {word['english']}?")
+    await message.answer(f"📝 Как переводится слово: {word['english']}?")
 
 
 # =========================
@@ -370,7 +355,7 @@ async def show_stats(message: Message) -> None:
     #
     # Тогда:
     # correct = 8
-    # total = 10ы
+    # total = 10
     correct, total = stats
 
     # Если попыток нет или статистика была сброшена,
@@ -434,7 +419,7 @@ async def handle_text(message: Message) -> None:
         # и сразу удаляем его из текущего теста.
         word = current_quiz_words.pop(user_id)
 
-        # В JSON может быть несколько переводов:
+        # В БД может быть несколько переводов:
         #
         # "завод, фабрика"
         #
@@ -463,7 +448,10 @@ async def handle_text(message: Message) -> None:
         if is_correct:
             # Находим все правильные варианты,
             # кроме того, который уже написал пользователь.
-            other_answers = [answer for answer in correct_answers if answer != text]
+            other_answers = [
+                answer for answer in correct_answers 
+                if answer != text.lower()
+            ]
 
             # Если есть другие допустимые переводы,
             # показываем их пользователю.
@@ -507,6 +495,7 @@ async def main() -> None:
             BotCommand(command="quiz", description="Проверить перевод слова"),
             BotCommand(command="stats", description="Посмотреть статистику"),
             BotCommand(command="favourites", description="Посмотреть избранные слова"),
+            BotCommand(command='help', description='Помощь по боту.')   
         ]
     )
 
