@@ -117,6 +117,7 @@ main_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="📝 Пройти тест")],
         [KeyboardButton(text="📊 Моя статистика")],
         [KeyboardButton(text="⭐ Избранные слова")],
+        [KeyboardButton(text="❓ Помощь")],
     ],
     resize_keyboard=True,
     input_field_placeholder="Выбери действие",
@@ -159,6 +160,7 @@ async def cmd_start(message: Message) -> None:
 
 
 @dp.message(Command('help'))
+@dp.message(F.text == '❓ Помощь')
 async def cmd_help(message:Message) -> None:
     await message.answer(
         "📚 Что я умею:\n\n"
@@ -200,7 +202,7 @@ async def send_card(message: Message) -> None:
     # Благодаря этому бот знает,
     # какое слово нужно добавить в избранное.
     favourite_button = InlineKeyboardButton(
-        text = "⭐ Добавить в избранное", callback_data=f"favourite:{word['english']}"
+        text = "⭐ Добавить в избранное", callback_data=f"favourite:{word['id']}"
     )
 
     # Создаём inline-клавиатуру и помещаем кнопку в неё.
@@ -231,23 +233,21 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
     # Получаем callback_data.
     #
     # Например:
-    # "favourite:factory"
+    # "favourite:85"
     #
     # split(":", 1) разделяет строку только один раз:
     #
-    # ["favourite", "factory"]
+    # ["favourite", "85"]
     #
-    # [1] берёт второй элемент — "factory".
-    english_word = callback.data.split(":", 1)[1]
+    # [1] берёт второй элемент — "85".
+    word_id = int(callback.data.split(":", 1)[1])
 
     # Пока слово не найдено.
     word = None
 
     # Ищем полную запись слова в WORDS.
-    # Нам нужен не только английский вариант,
-    # но и русский перевод.
     for item in WORDS:
-        if item["english"] == english_word:
+        if item["id"] == word_id:
             word = item
             break
 
@@ -259,9 +259,8 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
 
     # Сохраняем в БД:
     # ID пользователя,
-    # английское слово,
-    # перевод.
-    add_fav_word_to_db(user_id, word["english"], word["russian"])
+    # ID Слова
+    add_fav_word_to_db(user_id, word["id"])
 
     logger.info(
         "The favourite word has been added | user_id=%s | word=%s | translation=%s",
@@ -292,12 +291,18 @@ async def get_fav_word(message: Message) -> None:
     # Создаем список слов для красивого сообщения
     lines = []
 
-    for word, translation in fav_words:
-        lines.append(f"{word} - {translation}")
+    for item in fav_words:
+        lines.append(
+            f"📚 Слово: <b>{item['english']}</b>\n"
+            f"RU Перевод: {item['russian']}\n"
+            f"📖 Определение: {item['definition']}\n"
+            f"💬 Пример: {item['example']}\n"
+            f"🔊 Произношение: {item['pronunciation']}"
+        )
 
-    text = "⭐ Твои избранные слова: \n\n" + "\n".join(lines)
+    text = "⭐ Твои избранные слова: \n\n" + "\n\n".join(lines)
 
-    await message.answer(text)
+    await message.answer(text, parse_mode='HTML')
 
 
 # =========================

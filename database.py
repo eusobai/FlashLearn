@@ -206,7 +206,7 @@ def reset_stats_in_db(user_id: int) -> None:
 # =========================
 
 
-def add_fav_word_to_db(user_id: int, word: str, translation: str) -> None:
+def add_fav_word_to_db(user_id: int, word_id: int) -> None:
 
     with get_connection() as connection:
 
@@ -219,11 +219,11 @@ def add_fav_word_to_db(user_id: int, word: str, translation: str) -> None:
         # перевод.
         cursor.execute(
             """
-            INSERT INTO favourite_words(user_id, word, translation)
-            VALUES( %s, %s, %s )
+            INSERT INTO favourite_words(user_id, word_id)
+            VALUES( %s, %s)
             ON CONFLICT DO NOTHING
             """,
-            (user_id, word, translation),
+            (user_id, word_id),
         )
 
         cursor.close()
@@ -239,11 +239,20 @@ def get_fav_words_in_db(user_id: int):
     with get_connection() as connection:
 
         # Ищем избранные слова конкретного пользователя.
-        cursor = connection.cursor()
+        cursor = connection.cursor(cursor_factory = RealDictCursor)
 
         cursor.execute(
             """
-            SELECT word, translation FROM favourite_words WHERE user_id = %s 
+            SELECT 
+                words.english, 
+                words.russian,
+                words.definition,
+                words.example,
+                words.pronunciation 
+            FROM favourite_words 
+            JOIN words 
+                ON favourite_words.word_id = words.id  
+            WHERE favourite_words.user_id = %s 
             """,
             (user_id,),
         )
