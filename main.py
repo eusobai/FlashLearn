@@ -134,6 +134,7 @@ async def cmd_start(message: Message) -> None:
     # Получаем имя пользователя.
     # Если username отсутствует, используем "unknown".
     username = message.from_user.username if message.from_user.username else "unknown"
+    user_fullname= message.from_user.full_name if message.from_user.full_name else "unknown"
 
     # Telegram ID нужен для связи пользователя
     # с его статистикой и избранными словами в БД.
@@ -144,7 +145,7 @@ async def cmd_start(message: Message) -> None:
     # не создаёт дубликат.
     add_user_to_db(user_id)
 
-    logger.info("The user is connected | username=%s | user_id=%s", username, user_id)
+    logger.info("The user is connected | username=%s | user_id=%s | fullname=%s" , username, user_id, user_fullname)
 
     # Отправляем приветствие и показываем главную клавиатуру.
     await message.answer(
@@ -210,10 +211,13 @@ async def send_card(message: Message) -> None:
 
     # Отправляем карточку и прикрепляем inline-кнопку.
     await message.answer(
-        f"📚 Карточка\n\n"
-        f"Английское слово: {word['english']}\n"
-        f"Перевод: {word['russian']}",
+        f"📚 Слово: <b>{word['english']}</b>\n"
+        f"RU Перевод: {word['russian']}\n"
+        f"📖 Определение: {word['definition']}\n"
+        f"💬 Пример: {word['example']}\n"
+        f"🔊 Произношение: {word['pronunciation']}",
         reply_markup=favorite_keybord,
+        parse_mode = "HTML"
     )
 
 
@@ -301,6 +305,11 @@ async def get_fav_word(message: Message) -> None:
         )
 
     text = "⭐ Твои избранные слова: \n\n" + "\n\n".join(lines)
+    
+    logger.info("Favourites words were sent | user_id=%s",
+    user_id
+    )
+
 
     await message.answer(text, parse_mode='HTML')
 
