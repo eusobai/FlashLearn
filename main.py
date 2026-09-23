@@ -113,10 +113,10 @@ current_quiz_words = {}
 # Её кнопки отправляют боту обычный текст.
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="📚 Получить карточку")],
-        [KeyboardButton(text="📝 Пройти тест")],
+        [KeyboardButton(text="📚 Учить слова")],
+        [KeyboardButton(text="🧠 Тренировка")],
         [KeyboardButton(text="📊 Моя статистика")],
-        [KeyboardButton(text="⭐ Избранные слова")],
+        [KeyboardButton(text="⭐ Мои слова")],
         [KeyboardButton(text="❓ Помощь")],
     ],
     resize_keyboard=True,
@@ -165,12 +165,12 @@ async def cmd_start(message: Message) -> None:
 async def cmd_help(message:Message) -> None:
     await message.answer(
         "📚 Что я умею:\n\n"
-        "📚 Получить карточку — получить случайное английское слово.\n"
-        "📝 Пройти тест — проверить свои знания.\n"
-        "📊 Моя статистика — посмотреть результат тестов.\n"
-        "⭐ Избранные слова — посмотреть сохранённые слова.\n\n"
-        "/start — открыть главное меню.\n"
-        "/help — показать эту справку."
+        "📚 Учить слова - получить случайное английское слово.\n"
+        "🧠 Тренировка - проверить свои знания.\n"
+        "📊 Моя статистика - посмотреть результат тестов.\n"
+        "⭐ Мои слова - посмотреть сохранённые слова.\n\n"
+        "/start - открыть главное меню.\n"
+        "/help - показать эту справку."
     )
 
 
@@ -181,7 +181,7 @@ async def cmd_help(message:Message) -> None:
 
 
 @dp.message(Command("card"))
-@dp.message(F.text == "📚 Получить карточку")
+@dp.message(F.text == "📚 Учить слова")
 async def send_card(message: Message) -> None:
     # Выбираем случайное слово из словаря.
     word = random.choice(WORDS)
@@ -203,7 +203,7 @@ async def send_card(message: Message) -> None:
     # Благодаря этому бот знает,
     # какое слово нужно добавить в избранное.
     favourite_button = InlineKeyboardButton(
-        text = "⭐ Добавить в избранное", callback_data=f"favourite:{word['id']}"
+        text = "⭐ Добавить в мои слова", callback_data=f"favourite:{word['id']}"
     )
 
     # Создаём inline-клавиатуру и помещаем кнопку в неё.
@@ -275,10 +275,10 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
 
     # Показываем пользователю небольшое уведомление
     # после успешного добавления.
-    await callback.answer("⭐ Добавлено в избранное!")
+    await callback.answer("⭐ Добавлен в мои слова!")
 
 
-@dp.message(F.text == "⭐ Избранные слова")
+@dp.message(F.text == "⭐ Мои слова")
 @dp.message(Command("favourites"))
 async def get_fav_word(message: Message) -> None:
     # Получаем ID пользователя.
@@ -289,7 +289,7 @@ async def get_fav_word(message: Message) -> None:
 
     # Если избранных слов нет, сообщаем об этом пользователю.
     if not fav_words:
-        await message.answer("У тебя пока нет избранных слов.")
+        await message.answer("📖 У тебя пока нет сохранённых слов.")
         return
 
     # Создаем список слов для красивого сообщения
@@ -304,7 +304,7 @@ async def get_fav_word(message: Message) -> None:
             f"🔊 Произношение: {item['pronunciation']}"
         )
 
-    text = "⭐ Твои избранные слова: \n\n" + "\n\n".join(lines)
+    text = "⭐ Твои сохранённые слова: \n\n" + "\n\n".join(lines)
     
     logger.info("Favourites words were sent | user_id=%s",
     user_id
@@ -320,7 +320,7 @@ async def get_fav_word(message: Message) -> None:
 
 
 @dp.message(Command("quiz"))
-@dp.message(F.text == "📝 Пройти тест")
+@dp.message(F.text == "🧠 Тренировка")
 async def start_quiz(message: Message) -> None:
     # Получаем ID пользователя.
     user_id = message.from_user.id
@@ -505,11 +505,11 @@ async def main() -> None:
     await bot.set_my_commands(
         [
             BotCommand(command="start", description="Запустить бота"),
-            BotCommand(command="card", description="Получить случайную карту"),
-            BotCommand(command="quiz", description="Проверить перевод слова"),
+            BotCommand(command="card", description="Получить случайное слово"),
+            BotCommand(command="quiz", description="Тренировка случайных слов"),
             BotCommand(command="stats", description="Посмотреть статистику"),
-            BotCommand(command="favourites", description="Посмотреть избранные слова"),
-            BotCommand(command='help', description='Помощь по боту.')   
+            BotCommand(command="favourites", description="Посмотреть мои слова"),
+            BotCommand(command='help', description='Помощь по боту')   
         ]
     )
 
