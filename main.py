@@ -84,7 +84,7 @@ logger = logging.getLogger(__name__)
 
 
 # Получаем токен бота из .env.
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("TEST_BOT_TOKEN")
 if not BOT_TOKEN:
     raise RuntimeError("Не найден BOT_TOKEN. Добавь его в файл .env")
 
@@ -277,6 +277,9 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
     # после успешного добавления.
     await callback.answer("⭐ Добавлен в мои слова!")
 
+# =========================
+# ПОЛУЧЕНИЕ ИЗБРАННЫХ СЛОВ
+# =========================
 
 @dp.message(F.text == "⭐ Мои слова")
 @dp.message(Command("favourites"))
@@ -304,14 +307,57 @@ async def get_fav_word(message: Message) -> None:
             f"🔊 Произношение: {item['pronunciation']}"
         )
 
-    text = "⭐ Твои сохранённые слова: \n\n" + "\n\n".join(lines)
+    text = "⭐ Твои сохранённые слова: \n\n" + f"У тебя сохранено: {len(fav_words)} слов\n\n" + "\n\n".join(lines)
     
+    keybord = InlineKeyboardMarkup(
+        inline_keyboard = [
+            [InlineKeyboardButton(
+                text = "🧠 Тренировка моих слов",
+                callback_data = "quiz_favourites"
+            )]
+        ]
+    )
+
     logger.info("Favourites words were sent | user_id=%s",
     user_id
     )
 
 
-    await message.answer(text, parse_mode='HTML')
+    await message.answer(text, parse_mode='HTML',reply_markup = keybord)
+
+
+# =========================
+# НАЧАЛО ТРЕНИРОВКИ ИЗБРАННЫХ СЛОВ
+# =========================
+
+@dp.callback_query(F.data == "quiz_favourites")
+async def start_fav_quiz(callback: CallbackQuery) -> None:
+    # Получаем ID пользователя, который нажал кнопку.
+    user_id = callback.from_user.id
+
+    # Получаем все сохранённые слова этого пользователя из базы данных.
+    favourite_words = get_fav_words_in_db(user_id)
+
+    # Если сохранённых слов нет, сообщаем об этом пользователю.
+    if not favourite_words:
+        await callback.message.answer(
+            "⭐ У тебя пока нет сохранённых слов."
+        )
+
+        # Убираем уведомление Telegram о нажатии inline-кнопки.
+        await callback.answer()
+        return
+
+    # Выбираем случайное слово из сохранённых слов пользователя.
+    random_word = random.choice(favourite_words)
+
+    # Сохраняем выбранное слово как текущее слово для проверки ответа.
+    current_quiz_words[user_id] = random_word
+
+    # Отправляем пользователю вопрос для тренировки.
+    await callback.message.answer(
+        f"📝 Как переводится слово: {random_word['english']}?"
+    )
 
 
 # =========================
@@ -442,7 +488,7 @@ async def handle_text(message: Message) -> None:
         # strip() убирает пробелы.
         # lower() приводит всё к нижнему регистру.
         correct_answers = [
-            answer.strip().lower() for answer in word["russian"].split(",")
+            answer.strip().lower() for answer in word["russian"].split(";")
         ]
 
         # Проверяем, находится ли ответ пользователя
