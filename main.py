@@ -276,28 +276,77 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
     # Показываем пользователю небольшое уведомление
     # после успешного добавления.
     await callback.answer("⭐ Добавлен в мои слова!")
-
 # =========================
 # ПОЛУЧЕНИЕ ИЗБРАННЫХ СЛОВ
 # =========================
 
+def get_word_form(number: int, forms: tuple[str, str, str]) -> str:
+    """
+    Выбирает правильную форму слова в зависимости от числа.
+
+    forms — три формы слова:
+    1) для 1
+    2) для 2-4
+    3) для 5 и больше
+
+    Например:
+    ("слово", "слова", "слов")
+
+    Результат:
+    1 → слово
+    2 → слова
+    5 → слов
+    21 → слово
+    22 → слова
+    25 → слов
+    """
+
+    # Берём последние две цифры числа.
+    n = abs(number) % 100
+
+    # Берём последнюю цифру числа.
+    n1 = n % 10
+
+    # Числа от 11 до 14 всегда используют форму "слов".
+    if 10 < n < 20:
+        return forms[2]
+
+    # Числа, заканчивающиеся на 1:
+    # 1, 21, 31, 101 и т.д.
+    if n1 == 1:
+        return forms[0]
+
+    # Числа, заканчивающиеся на 2, 3 или 4:
+    # 2, 3, 4, 22, 23, 24 и т.д.
+    if 1 < n1 < 5:
+        return forms[1]
+
+    # Все остальные числа:
+    # 5, 6, 10, 15, 20, 25 и т.д.
+    return forms[2]
+
+
 @dp.message(F.text == "⭐ Мои слова")
 @dp.message(Command("favourites"))
 async def get_fav_word(message: Message) -> None:
+
     # Получаем ID пользователя.
     user_id = message.from_user.id
 
-    # Получаем все избранные слова этого польщователя из БД.
+    # Получаем все избранные слова этого пользователя из БД.
     fav_words = get_fav_words_in_db(user_id)
 
     # Если избранных слов нет, сообщаем об этом пользователю.
     if not fav_words:
-        await message.answer("📖 У тебя пока нет сохранённых слов.")
+        await message.answer(
+            "📖 У тебя пока нет сохранённых слов."
+        )
         return
 
-    # Создаем список слов для красивого сообщения
+    # Создаём список строк для красивого сообщения.
     lines = []
 
+    # Проходим по каждому сохранённому слову.
     for item in fav_words:
         lines.append(
             f"📚 Слово: <b>{item['english']}</b>\n"
@@ -307,24 +356,48 @@ async def get_fav_word(message: Message) -> None:
             f"🔊 Произношение: {item['pronunciation']}"
         )
 
-    text = "⭐ Твои сохранённые слова: \n\n" + f"У тебя сохранено: {len(fav_words)} слов\n\n" + "\n\n".join(lines)
-    
-    keybord = InlineKeyboardMarkup(
-        inline_keyboard = [
-            [InlineKeyboardButton(
-                text = "🧠 Тренировка моих слов",
-                callback_data = "quiz_favourites"
-            )]
+    # Получаем количество сохранённых слов.
+    count = len(fav_words)
+
+    # Получаем правильную форму слова:
+    # "1 слово", "2 слова", "5 слов", "21 слово" и т.д.
+    word_form = get_word_form(
+        count,
+        ("слово", "слова", "слов")
+    )
+
+    # Создаём итоговый текст сообщения.
+    text = (
+        "⭐ Твои сохранённые слова:\n\n"
+        + f"У тебя сохранено: {count} {word_form}\n\n"
+        + "\n\n".join(lines)
+    )
+
+    # Создаём inline-кнопку.
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🧠 Тренировка моих слов",
+                    callback_data="quiz_favourites"
+                )
+            ]
         ]
     )
 
-    logger.info("Favourites words were sent | user_id=%s",
-    user_id
+    # Записываем в лог информацию о том,
+    # что список избранных слов был отправлен.
+    logger.info(
+        "Favourites words were sent | user_id=%s",
+        user_id
     )
 
-
-    await message.answer(text, parse_mode='HTML',reply_markup = keybord)
-
+    # Отправляем пользователю список слов и кнопку.
+    await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )
 
 # =========================
 # НАЧАЛО ТРЕНИРОВКИ ИЗБРАННЫХ СЛОВ
