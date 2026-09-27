@@ -244,6 +244,7 @@ def get_fav_words_in_db(user_id: int):
         cursor.execute(
             """
             SELECT 
+                words.id AS word_id,
                 words.english, 
                 words.russian,
                 words.definition,
@@ -262,3 +263,21 @@ def get_fav_words_in_db(user_id: int):
         cursor.close()
 
         return result
+
+
+# УДАЛЕНИЕ ИЗБРАННОГО СЛОВО
+
+def delete_fav_word_in_db(user_id:int, word_id: int) -> None:
+
+    with get_connection() as connection:
+
+        cursor = connection.cursor()
+
+        cursor.execute(
+            """
+            DELETE FROM favourite_words WHERE user_id=%s AND word_id=%s
+            """,
+            (user_id, word_id),
+        )
+
+        cursor.close()

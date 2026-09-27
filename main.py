@@ -39,6 +39,7 @@ from database import (
     reset_stats_in_db,
     add_fav_word_to_db,
     get_fav_words_in_db,
+    delete_fav_word_in_db
 )
 
 # Загружает переменные из .env.
@@ -226,6 +227,7 @@ async def send_card(message: Message) -> None:
 # =========================
 
 
+
 # Обработчик срабатывает, когда пользователь нажимает
 # inline-кнопку, у которой callback_data начинается с "favourite:".
 @dp.callback_query(F.data.startswith("favourite:"))
@@ -346,14 +348,29 @@ async def get_fav_word(message: Message) -> None:
     # Создаём список строк для красивого сообщения.
     lines = []
 
+    # Создаем список inline-кнопок
+    remove_buttons = []
+
     # Проходим по каждому сохранённому слову.
     for item in fav_words:
+
+        # Добавляем информацию о слове в текст.
         lines.append(
             f"📚 Слово: <b>{item['english']}</b>\n"
             f"RU Перевод: {item['russian']}\n"
             f"📖 Определение: {item['definition']}\n"
             f"💬 Пример: {item['example']}\n"
             f"🔊 Произношение: {item['pronunciation']}"
+        )
+
+        # Создаём кнопку удаления именно для этого слова.
+        remove_buttons.append(
+            [
+                InlineKeyboardButton(
+                    text = f"🗑 Удалить {item['english']}",
+                    callback_data = f"remove_fav_word:{item['word_id']}"
+                )
+            ]
         )
 
     # Получаем количество сохранённых слов.
@@ -376,6 +393,7 @@ async def get_fav_word(message: Message) -> None:
     # Создаём inline-кнопку.
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
+            *remove_buttons,
             [
                 InlineKeyboardButton(
                     text="🧠 Тренировка моих слов",
@@ -398,6 +416,27 @@ async def get_fav_word(message: Message) -> None:
         parse_mode="HTML",
         reply_markup=keyboard
     )
+
+# =========================
+# УДАЛЕНИЕ ИЗБРАННОГО СЛОВО
+# =========================
+
+@dp.callback_query(F.data.startswith("remove_fav_word:"))
+async def delete_fav_word(callback: CallbackQuery):
+
+    user_id = callback.from_user.id
+
+    word_id = int(callback.data.split(":", 1)[1])
+
+    delete_fav_word_in_db(user_id, word_id)
+
+    logger.info(
+        "Favourites word has been removed | user_id=%s | word_id=%s",
+        user_id, word_id
+    )
+
+    await callback.answer("🗑 Слово удалено!")
+
 
 # =========================
 # НАЧАЛО ТРЕНИРОВКИ ИЗБРАННЫХ СЛОВ
