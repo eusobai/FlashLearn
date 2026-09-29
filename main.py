@@ -103,8 +103,8 @@ WORDS = get_words()
 
 # Здесь временно хранится текущее слово для каждого пользователя,
 # который проходит тест.
-current_quiz_word = {}
-current_choice_quiz_word = {}
+current_quiz_words = {}
+current_choice_quiz_words = {}
 
 # =========================
 # ГЛАВНАЯ КЛАВИАТУРА
@@ -466,7 +466,7 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
     question_word = random.choice(favourite_words)
 
     # Сохраняем выбранное слово как текущее слово для проверки ответа.
-    current_quiz_word[user_id] = question_word
+    current_quiz_words[user_id] = question_word
 
     # Отправляем пользователю вопрос для тренировки.
     await callback.message.answer(
@@ -519,7 +519,7 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     # Выбираем случайное слово из общего словаря.
     question_word = random.choice(WORDS)
 
-    # Сохраняем выбранное слово в словаре current_quiz_word.
+    # Сохраняем выбранное слово в словаре current_quiz_words.
     #
     # Ключ:
     # user_id
@@ -528,11 +528,11 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     # выбранное слово
     #
     # Например:
-    # current_quiz_word[123456] = question_word
+    # current_quiz_words[123456] = question_word
     #
     # Благодаря этому после ответа пользователя
     # бот сможет понять, какое слово нужно проверить.
-    current_quiz_word[user_id] = question_word
+    current_quiz_words[user_id] = question_word
 
     # Отправляем пользователю вопрос.
     #
@@ -559,7 +559,7 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
     question_word = random.choice(WORDS)
 
     # Запоминаем правильный ответ
-    current_choice_quiz_word[user_id] = question_word
+    current_choice_quiz_words[user_id] = question_word
 
     # Выбираем 3 неправильных слова
     wrong_words = random.sample(
@@ -606,8 +606,13 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
     # Получаем ID выбранного пользователем слова
     word_id = int(callback.data.split(":",1)[1])
 
+    # Проверяем, есть ли активный вопрос
+    if user_id not in current_choice_quiz_words:
+        await callback.answer("Этот вопрос уже отвечен.")
+        return
+
     # Получаем правильное слово и удаляем его из текущего теста
-    correct_word = current_choice_quiz_word.pop(user_id)
+    correct_word = current_choice_quiz_words.pop(user_id)
 
     # Пока выбранное слово не найдено
     selected_word = None
@@ -632,6 +637,9 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
             f"❌ Неправильно.\n\n"
             f"Правильный ответ: {correct_word['russian']}"
         )
+
+    # Убираем кнопки из старого вопроса
+    await callback.message.edit_reply_markup(reply_markup=None)
 
     # Подтверждаем нажатие кнопки
     await callback.answer()
@@ -724,11 +732,11 @@ async def handle_text(message: Message) -> None:
     text = message.text.strip()
 
     # Проверяем, есть ли у пользователя активный вопрос.
-    if user_id in current_quiz_word:
+    if user_id in current_quiz_words:
 
         # Получаем слово, которое пользователь должен был перевести,
         # и сразу удаляем его из текущего теста.
-        correct_word = current_quiz_word.pop(user_id)
+        correct_word = current_quiz_words.pop(user_id)
 
         # В БД может быть несколько переводов:
         #
