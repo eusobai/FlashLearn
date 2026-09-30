@@ -749,7 +749,7 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
     update_stats_in_db(user_id, is_correct)
 
     # Показываем результат
-    if(is_correct):
+    if is_correct:
         quiz_stats[user_id]["correct"] += 1
         await callback.message.answer("✅ Правильно!")
     else:
@@ -758,11 +758,11 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
             f"Правильный ответ: {correct_word['russian']}"
         )
 
+    # Сразу подтверждаем нажатие кнопки.
+    await callback.answer()
+    
     # Убираем кнопки из старого вопроса
     await callback.message.edit_reply_markup(reply_markup=None)
-
-    # Подтверждаем нажатие кнопки
-    await callback.answer()
 
     await send_choice_quiz(callback.message, user_id)
 
