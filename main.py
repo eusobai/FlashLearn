@@ -103,8 +103,24 @@ WORDS = get_words()
 
 # Здесь временно хранится текущее слово для каждого пользователя,
 # который проходит тест.
+#
+# current_quiz_words — текстовый тест.
+# current_choice_quiz_words — тест с вариантами ответа.
 current_quiz_words = {}
 current_choice_quiz_words = {}
+
+# Здесь временно хранится статистика текущей тренировки
+# с вариантами ответа.
+#
+# Например:
+# choice_quiz_stats[123] = {
+#     "correct": 3,
+#     "total": 5
+# }
+#
+# Эта статистика не хранится в БД.
+# Она нужна только пока пользователь проходит одну тренировку.
+choice_quiz_stats = {}
 
 # =========================
 # ГЛАВНАЯ КЛАВИАТУРА
@@ -549,16 +565,18 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
 # СТАРТ ТЕСТА С ВЫБОРАМИ
 # =========================
 
-@dp.callback_query(F.data == "quiz_choice")
-async def start_choice_quiz(callback: CallbackQuery) -> None:
-
-    # Получаем ID пользователя
-    user_id = callback.from_user.id
-
-    # Выбираем слово для вопроса
+async def send_choice_quiz(message: Message, user_id: int):
+    # Выбираем случайное слово,
+    # которое будет правильным ответом.
     question_word = random.choice(WORDS)
 
-    # Запоминаем правильный ответ
+    # Запоминаем правильный ответ для этого пользователя.
+    #
+    # Например:
+    # current_choice_quiz_words[123] = question_word
+    #
+    # Позже обработчик ответа достанет это слово
+    # и сравнит его с выбранным пользователем вариантом.
     current_choice_quiz_words[user_id] = question_word
 
     # Выбираем 3 неправильных слова
@@ -570,7 +588,9 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
     # Объединяем правильный и неправильные ответы
     options = [question_word, *wrong_words]
     
-    # Перемешиваем варианты
+    # Перемешиваем варианты,
+    # чтобы правильный ответ каждый раз
+    # находился на случайной позиции.
     random.shuffle(options)
 
     # Создаём кнопки с вариантами    
@@ -579,17 +599,89 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
             [InlineKeyboardButton(text = options[0]['russian'], callback_data = f"choice:{options[0]['id']}")],
             [InlineKeyboardButton(text = options[1]['russian'], callback_data = f"choice:{options[1]['id']}")],
             [InlineKeyboardButton(text = options[2]['russian'], callback_data = f"choice:{options[2]['id']}")],
-            [InlineKeyboardButton(text = options[3]['russian'], callback_data = f"choice:{options[3]['id']}")]
+            [InlineKeyboardButton(text = options[3]['russian'], callback_data = f"choice:{options[3]['id']}")],
+            [InlineKeyboardButton(text = "🛑 Завершить тренировку", callback_data = "finish_choice_quiz")]
         ]
     )
 
     # Отправляем вопрос и кнопки
-    await callback.message.answer(
+    await message.answer(
         f"📝 Как переводится слово: {question_word['english']}?",
         reply_markup = keyboard
     )
 
+
+@dp.callback_query(F.data == "quiz_choice")
+async def start_choice_quiz(callback: CallbackQuery) -> None:
+
+    # Получаем ID пользователя
+    user_id = callback.from_user.id
+
+    # Создаём статистику новой тренировки.
+    choice_quiz_stats[user_id] = {
+        "correct": 0,
+        "total": 0
+    }
+
+    # Отправляем первый вопрос тренировки.
+    await send_choice_quiz(callback.message, user_id)
+
     # Подтверждаем нажатие кнопки
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "finish_choice_quiz")
+async def finish_choice_quiz(callback: CallbackQuery) -> None:
+
+    user_id = callback.from_user.id
+
+    # Получаем статистику текущей тренировки.
+    quiz_stats = choice_quiz_stats.get(user_id)
+
+    # Проверяем, существует ли ещё текущая тренировка.    
+    if not quiz_stats:
+        await callback.answer("Тренировка уже завершена.")
+        return
+
+    # Получаем общее количество отвеченных вопросов.
+    total_questions = quiz_stats["total"]
+    
+    # Получаем количество правильных ответов.
+    correct_answers = quiz_stats["correct"]
+
+    # Количество ошибок
+    wrong_answers = total_questions - correct_answers
+
+    # Вычисляем процент правильных ответов.
+    accuracy_percent = (
+        round(correct_answers / total_questions * 100)
+        if(total_questions)
+        else 0 
+    )
+
+    # Показываем итоговый результат пользователю.
+    await callback.message.answer(
+        f"🏁 Тренировка завершена!\n\n"
+        f"Вопросов: {total_questions}\n"
+        f"Правильных: {correct_answers}\n"
+        f"Ошибок: {wrong_answers}\n"
+        f"Результат: {accuracy_percent}%\n"
+    ) 
+
+    # Удаляем статистику текущей тренировки.
+    # потому что это временная статистика.
+    choice_quiz_stats.pop(user_id, None)
+
+    # Удаляем активный вопрос,
+    # потому что тренировка завершена.
+    current_choice_quiz_words.pop(user_id, None)
+
+    # Убираем старые кнопки
+    # из сообщения с вопросом.
+    await callback.message.edit_reply_markup(reply_markup = None)
+
+
+    # Подтверждаем нажатие кнопки.
     await callback.answer()
 
 
@@ -625,12 +717,15 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
 
     # Проверяем, совпадает ли выбранное слово с правильным
     is_correct = selected_word["id"] == correct_word["id"]
+    
+    choice_quiz_stats[user_id]["total"] += 1
 
     # Обновляем статистику пользователя
     update_stats_in_db(user_id, is_correct)
 
     # Показываем результат
     if(is_correct):
+        choice_quiz_stats[user_id]["correct"] += 1
         await callback.message.answer("✅ Правильно!")
     else:
         await callback.message.answer(
@@ -644,10 +739,14 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
     # Подтверждаем нажатие кнопки
     await callback.answer()
 
+    await send_choice_quiz(callback.message, user_id)
+
 
 # =========================
 # СТАТИСТИКА
 # =========================
+
+
 @dp.message(Command("stats"))
 @dp.message(F.text == "📊 Моя статистика")
 async def show_stats(message: Message) -> None:
