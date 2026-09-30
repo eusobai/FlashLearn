@@ -120,7 +120,7 @@ current_choice_quiz_words = {}
 #
 # Эта статистика не хранится в БД.
 # Она нужна только пока пользователь проходит одну тренировку.
-choice_quiz_stats = {}
+quiz_stats = {}
 
 # =========================
 # ГЛАВНАЯ КЛАВИАТУРА
@@ -489,6 +489,8 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
         f"📝 Как переводится слово: {question_word['english']}?"
     )
 
+    await callback.answer()
+
 
 # =========================
 # НАЧАЛО ТЕСТА
@@ -532,6 +534,11 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     # именно для этого пользователя.
     user_id = callback.from_user.id
 
+    quiz_stats[user_id] = {
+        "correct": 0,
+        "total": 0,
+        "type": "text"
+    }
     # Выбираем случайное слово из общего словаря.
     question_word = random.choice(WORDS)
 
@@ -550,12 +557,20 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     # бот сможет понять, какое слово нужно проверить.
     current_quiz_words[user_id] = question_word
 
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard = [
+            [InlineKeyboardButton( text="🛑 Завершить тренировку", callback_data="finish_quiz")]
+        ]
+    )
+
+
     # Отправляем пользователю вопрос.
     #
     # Пользователь должен самостоятельно
     # написать перевод слова.
     await callback.message.answer(
-        f"📝 Как переводится слово: {question_word['english']}?"
+        f"📝 Как переводится слово: {question_word['english']}?\n\n",
+        reply_markup = keyboard
     )
 
     await callback.answer()
@@ -600,7 +615,7 @@ async def send_choice_quiz(message: Message, user_id: int):
             [InlineKeyboardButton(text = options[1]['russian'], callback_data = f"choice:{options[1]['id']}")],
             [InlineKeyboardButton(text = options[2]['russian'], callback_data = f"choice:{options[2]['id']}")],
             [InlineKeyboardButton(text = options[3]['russian'], callback_data = f"choice:{options[3]['id']}")],
-            [InlineKeyboardButton(text = "🛑 Завершить тренировку", callback_data = "finish_choice_quiz")]
+            [InlineKeyboardButton(text = "🛑 Завершить тренировку", callback_data = "finish_quiz")]
         ]
     )
 
@@ -618,9 +633,10 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
     user_id = callback.from_user.id
 
     # Создаём статистику новой тренировки.
-    choice_quiz_stats[user_id] = {
+    quiz_stats[user_id] = {
         "correct": 0,
-        "total": 0
+        "total": 0,
+        "type": "choice"
     }
 
     # Отправляем первый вопрос тренировки.
@@ -630,24 +646,27 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@dp.callback_query(F.data == "finish_choice_quiz")
-async def finish_choice_quiz(callback: CallbackQuery) -> None:
+@dp.callback_query(F.data == "finish_quiz")
+async def finish_quiz(callback: CallbackQuery) -> None:
 
     user_id = callback.from_user.id
 
     # Получаем статистику текущей тренировки.
-    quiz_stats = choice_quiz_stats.get(user_id)
+    stats = quiz_stats.get(user_id)
 
     # Проверяем, существует ли ещё текущая тренировка.    
-    if not quiz_stats:
+    if not stats:
         await callback.answer("Тренировка уже завершена.")
         return
 
+    # Получаем тип текущей тренировки.
+    quiz_type = stats["type"] 
+
     # Получаем общее количество отвеченных вопросов.
-    total_questions = quiz_stats["total"]
+    total_questions = stats["total"]
     
     # Получаем количество правильных ответов.
-    correct_answers = quiz_stats["correct"]
+    correct_answers = stats["correct"]
 
     # Количество ошибок
     wrong_answers = total_questions - correct_answers
@@ -670,11 +689,17 @@ async def finish_choice_quiz(callback: CallbackQuery) -> None:
 
     # Удаляем статистику текущей тренировки.
     # потому что это временная статистика.
-    choice_quiz_stats.pop(user_id, None)
+    quiz_stats.pop(user_id, None)
 
-    # Удаляем активный вопрос,
+
+    # Удаляем активный вопрос в зависимости от типа тренировки.
     # потому что тренировка завершена.
-    current_choice_quiz_words.pop(user_id, None)
+    if quiz_type == "choice":
+        current_choice_quiz_words.pop(user_id, None)
+
+    elif quiz_type == "text":
+        current_quiz_words.pop(user_id, None)
+
 
     # Убираем старые кнопки
     # из сообщения с вопросом.
@@ -718,14 +743,14 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
     # Проверяем, совпадает ли выбранное слово с правильным
     is_correct = selected_word["id"] == correct_word["id"]
     
-    choice_quiz_stats[user_id]["total"] += 1
+    quiz_stats[user_id]["total"] += 1
 
     # Обновляем статистику пользователя
     update_stats_in_db(user_id, is_correct)
 
     # Показываем результат
     if(is_correct):
-        choice_quiz_stats[user_id]["correct"] += 1
+        quiz_stats[user_id]["correct"] += 1
         await callback.message.answer("✅ Правильно!")
     else:
         await callback.message.answer(
@@ -853,6 +878,9 @@ async def handle_text(message: Message) -> None:
         # среди допустимых переводов.
         is_correct = text.lower() in correct_answers
 
+        # Обновляем статистику текущей тренировки.
+        quiz_stats[user_id]["total"] += 1
+        
         # Обновляем статистику пользователя в БД.
         update_stats_in_db(user_id, is_correct)
 
@@ -866,6 +894,8 @@ async def handle_text(message: Message) -> None:
         if is_correct:
             # Находим все правильные варианты,
             # кроме того, который уже написал пользователь.
+            quiz_stats[user_id]["correct"] += 1
+
             other_answers = [
                 answer for answer in correct_answers 
                 if answer != text.lower()
@@ -879,15 +909,29 @@ async def handle_text(message: Message) -> None:
                 )
             else:
                 await message.answer("✅ Правильно! Молодец.")
-
+                
         # Если ответ неправильный.
         else:
             await message.answer(
                 "❌ Неправильно.\n\n" f"Правильные ответы: {', '.join(correct_answers)}"
             )
+        
+        next_word = random.choice(WORDS)
 
-        # Останавливаем обработчик,
-        # чтобы сообщение не пошло дальше.
+        current_quiz_words[user_id] = next_word
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard = [
+                [InlineKeyboardButton(text="🛑 Завершить тренировку", callback_data="finish_quiz")]
+            ]
+        )
+
+        await message.answer(
+            f"📝 Как переводится слово: {next_word['english']}?",
+            reply_markup = keyboard
+        )
+
+        # Останавливаем обработчик
         return
 
     # Если пользователь не отвечает на активный тест,
