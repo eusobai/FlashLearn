@@ -31,7 +31,6 @@ jobs:
           put database.py database.py
           put words.json words.json
           put requirements.txt requirements.txt
-          put Procfile Procfile
           bye
           EOF
 

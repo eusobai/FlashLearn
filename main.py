@@ -30,6 +30,10 @@ from aiogram.types import (
     CallbackQuery,
 )
 
+# Обрабатывает ошибку Telegram, когда пользователь нажал старую кнопку
+# и Telegram уже не принимает ответ на это нажатие.
+from aiogram.exceptions import TelegramBadRequest
+
 # Функции для работы с базой данных.
 from database import (
     get_words,
@@ -78,6 +82,23 @@ logging.getLogger('aiogram').setLevel(logging.WARNING)
 # Создаём logger для записи событий работы бота.
 logger = logging.getLogger(__name__)
 
+
+# Безопасно подтверждает нажатие inline-кнопки.
+# Это нужно делать сразу, чтобы у пользователя не крутилась загрузка.
+async def safe_callback_answer(callback: CallbackQuery) -> None:
+    try:
+        await callback.answer()  # сразу останавливает загрузку кнопки
+    except TelegramBadRequest as error:
+        # Такая ошибка возникает, если нажатие слишком старое:
+        # например, сервер временно не мог связаться с Telegram.
+        if "query is too old" in str(error):
+            logger.warning(
+                "Старое нажатие кнопки пропущено | user_id=%s",
+                callback.from_user.id,
+            )
+        else:
+            # Другие ошибки не скрываем — их нужно видеть в логах.
+            raise
 
 # =========================
 # НАСТРОЙКА BOT TOKEN
@@ -248,6 +269,10 @@ async def send_card(message: Message) -> None:
 # inline-кнопку, у которой callback_data начинается с "favourite:".
 @dp.callback_query(F.data.startswith("favourite:"))
 async def handle_add_favourite(callback: CallbackQuery) -> None:
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
     # Получаем Telegram ID пользователя,
     # который нажал кнопку.
     user_id = callback.from_user.id
@@ -442,6 +467,9 @@ async def get_fav_word(message: Message) -> None:
 @dp.callback_query(F.data.startswith("remove_fav_word:"))
 async def delete_fav_word(callback: CallbackQuery):
 
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
     user_id = callback.from_user.id
 
     word_id = int(callback.data.split(":", 1)[1])
@@ -462,6 +490,10 @@ async def delete_fav_word(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "quiz_favourites")
 async def start_fav_quiz(callback: CallbackQuery) -> None:
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
     # Получаем ID пользователя, который нажал кнопку.
     user_id = callback.from_user.id
 
@@ -474,8 +506,6 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
             "⭐ У тебя пока нет сохранённых слов."
         )
 
-        # Убираем уведомление Telegram о нажатии inline-кнопки.
-        await callback.answer()
         return
 
     # Выбираем случайное слово из сохранённых слов пользователя.
@@ -488,8 +518,6 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
     await callback.message.answer(
         f"📝 Как переводится слово: {question_word['english']}?"
     )
-
-    await callback.answer()
 
 
 # =========================
@@ -527,15 +555,15 @@ async def start_quiz(message: Message) -> None:
 @dp.callback_query(F.data == "quiz_text")
 async def start_text_quiz(callback: CallbackQuery) -> None:
 
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
     # Получаем Telegram ID пользователя,
     # который нажал кнопку.
     #
     # ID нужен, чтобы сохранить текущее слово
     # именно для этого пользователя.
     user_id = callback.from_user.id
-
-    # Сразу подтверждаем нажатие кнопки.
-    await callback.answer()
 
     quiz_stats[user_id] = {
         "correct": 0,
@@ -636,6 +664,9 @@ async def send_choice_quiz(message: Message, user_id: int):
 @dp.callback_query(F.data == "quiz_choice")
 async def start_choice_quiz(callback: CallbackQuery) -> None:
 
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
     # Получаем ID пользователя
     user_id = callback.from_user.id
 
@@ -655,21 +686,21 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
     # Отправляем первый вопрос тренировки.
     await send_choice_quiz(callback.message, user_id)
 
-    # Подтверждаем нажатие кнопки
-    await callback.answer()
 
 
 @dp.callback_query(F.data == "finish_quiz")
 async def finish_quiz(callback: CallbackQuery) -> None:
 
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
     user_id = callback.from_user.id
 
-    # Получаем статистику текущей тренировки.
-    stats = quiz_stats.get(user_id)
+    # Удаляем статистику текущей тренировки.
+    stats = quiz_stats.pop(user_id, None)
 
     # Проверяем, существует ли ещё текущая тренировка.    
     if not stats:
-        await callback.answer("Тренировка уже завершена.")
         return
 
     # Получаем тип текущей тренировки.
@@ -709,10 +740,6 @@ async def finish_quiz(callback: CallbackQuery) -> None:
         f"Результат: {accuracy_percent}%\n"
     ) 
 
-    # Удаляем статистику текущей тренировки.
-    # потому что это временная статистика.
-    quiz_stats.pop(user_id, None)
-
 
     # Удаляем активный вопрос в зависимости от типа тренировки.
     # потому что тренировка завершена.
@@ -728,10 +755,6 @@ async def finish_quiz(callback: CallbackQuery) -> None:
     await callback.message.edit_reply_markup(reply_markup = None)
 
 
-    # Подтверждаем нажатие кнопки.
-    await callback.answer()
-
-
 # =========================
 # ПРОВЕРКА ОТВЕТА НА ТЕСТ ПО ВЫБОРУ
 # =========================
@@ -739,6 +762,9 @@ async def finish_quiz(callback: CallbackQuery) -> None:
 
 @dp.callback_query(F.data.startswith("choice:"))
 async def handle_quiz_test(callback: CallbackQuery) -> None:
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
 
     user_id = callback.from_user.id
 
@@ -786,9 +812,6 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
             f"❌ Неправильно.\n\n"
             f"Правильный ответ: {correct_word['russian']}"
         )
-
-    # Сразу подтверждаем нажатие кнопки.
-    await callback.answer()
 
     # Убираем кнопки из старого вопроса
     await callback.message.edit_reply_markup(reply_markup=None)
