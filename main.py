@@ -539,6 +539,12 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
         "total": 0,
         "type": "text"
     }
+
+    logger.info(
+        "Text quiz started | user_id=%s",
+        user_id
+    )
+
     # Выбираем случайное слово из общего словаря.
     question_word = random.choice(WORDS)
 
@@ -639,6 +645,12 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
         "type": "choice"
     }
 
+    logger.info(
+        "Choice quiz started | user_id=%s",
+        user_id
+    )
+
+    
     # Отправляем первый вопрос тренировки.
     await send_choice_quiz(callback.message, user_id)
 
@@ -676,6 +688,15 @@ async def finish_quiz(callback: CallbackQuery) -> None:
         round(correct_answers / total_questions * 100)
         if(total_questions)
         else 0 
+    )
+
+    logger.info(
+        "Quiz finished | user_id=%s | type=%s | total=%s | correct=%s | accuracy=%s%%",
+        user_id,
+        quiz_type,
+        total_questions,
+        correct_answers,
+        accuracy_percent,
     )
 
     # Показываем итоговый результат пользователю.
@@ -748,6 +769,13 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
     # Обновляем статистику пользователя
     update_stats_in_db(user_id, is_correct)
 
+    logger.info(
+        "Choice quiz answered | user_id=%s | correct=%s",
+        user_id,
+        is_correct,
+    )
+
+
     # Показываем результат
     if is_correct:
         quiz_stats[user_id]["correct"] += 1
@@ -760,7 +788,7 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
 
     # Сразу подтверждаем нажатие кнопки.
     await callback.answer()
-    
+
     # Убираем кнопки из старого вопроса
     await callback.message.edit_reply_markup(reply_markup=None)
 
