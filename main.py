@@ -534,6 +534,9 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     # именно для этого пользователя.
     user_id = callback.from_user.id
 
+    # Сразу подтверждаем нажатие кнопки.
+    await callback.answer()
+
     quiz_stats[user_id] = {
         "correct": 0,
         "total": 0,
@@ -578,8 +581,6 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
         f"📝 Как переводится слово: {question_word['english']}?\n\n",
         reply_markup = keyboard
     )
-
-    await callback.answer()
 
 
 # =========================
