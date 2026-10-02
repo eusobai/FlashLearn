@@ -85,9 +85,9 @@ logger = logging.getLogger(__name__)
 
 # Безопасно подтверждает нажатие inline-кнопки.
 # Это нужно делать сразу, чтобы у пользователя не крутилась загрузка.
-async def safe_callback_answer(callback: CallbackQuery) -> None:
+async def safe_callback_answer(callback: CallbackQuery, text: str = "") -> None:
     try:
-        await callback.answer()  # сразу останавливает загрузку кнопки
+        await callback.answer(text = text)  # сразу останавливает загрузку кнопки
     except TelegramBadRequest as error:
         # Такая ошибка возникает, если нажатие слишком старое:
         # например, сервер временно не мог связаться с Telegram.
@@ -271,7 +271,7 @@ async def send_card(message: Message) -> None:
 async def handle_add_favourite(callback: CallbackQuery) -> None:
 
     # Сразу убираем загрузку у нажатой inline-кнопки.
-    await safe_callback_answer(callback)
+    await safe_callback_answer(callback, "⏳ Добавляю слово...")
 
     # Получаем Telegram ID пользователя,
     # который нажал кнопку.
@@ -301,7 +301,7 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
     # Если слово не найдено в БД,
     # прекращаем выполнение обработчика.
     if word is None:
-        await callback.answer("❌ Слово не найдено.")
+        await callback.message.answer("❌ Слово не найдено.")
         return
 
     # Сохраняем в БД:
@@ -318,7 +318,7 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
 
     # Показываем пользователю небольшое уведомление
     # после успешного добавления.
-    await callback.answer("⭐ Добавлен в мои слова!")
+    await callback.message.answer("⭐ Добавлен в мои слова!")
 
 
 # =========================
@@ -468,7 +468,7 @@ async def get_fav_word(message: Message) -> None:
 async def delete_fav_word(callback: CallbackQuery):
 
     # Сразу убираем загрузку у нажатой inline-кнопки.
-    await safe_callback_answer(callback)
+    await safe_callback_answer(callback, "⏳ Удаляю слово...")
 
     user_id = callback.from_user.id
 
@@ -481,7 +481,7 @@ async def delete_fav_word(callback: CallbackQuery):
         user_id, word_id
     )
 
-    await callback.answer("🗑 Слово удалено!")
+    await callback.message.answer("🗑 Слово удалено!")
 
 
 # =========================
