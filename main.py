@@ -143,6 +143,44 @@ current_choice_quiz_words = {}
 # Она нужна только пока пользователь проходит одну тренировку.
 quiz_stats = {}
 
+# Хранит последнее сообщение с вопросом тренировки каждого пользователя.
+# Нужно, чтобы потом убрать с него кнопку «Завершить тренировку».
+active_quiz_message = {}
+
+# =========================
+# ФУНКЦИИ ПОМОШНИКИ
+# =========================
+
+async def hide_active_quiz_keyboard(user_id: int) -> None:
+
+    question_message = active_quiz_message.pop(user_id, None)
+    
+    if question_message is None:
+        return
+    
+    try:
+        await question_message.edit_reply_markup(reply_markup = None)
+
+    except TelegramBadRequest as error: 
+        logger.warning(
+            "Failed to remove training buttons | user_id=%s | error=%s",
+            user_id, error
+        )
+
+
+async def cancel_active_quiz(user_id) -> None:
+
+    # Убираем кнопку со старого вопроса.
+    await hide_active_quiz_keyboard(user_id)
+
+    # Полностью очищаем временные данные старой тренировки.
+    quiz_stats.pop(user_id, None)
+    current_choice_quiz_words.pop(user_id, None)
+    current_quiz_words.pop(user_id, None)
+    
+
+
+
 # =========================
 # ГЛАВНАЯ КЛАВИАТУРА
 # =========================
@@ -169,6 +207,10 @@ main_keyboard = ReplyKeyboardMarkup(
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
+
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(message.from_user.id)
+
     # Получаем имя пользователя.
     # Если username отсутствует, используем "unknown".
     username = message.from_user.username if message.from_user.username else "unknown"
@@ -201,6 +243,10 @@ async def cmd_start(message: Message) -> None:
 @dp.message(Command('help'))
 @dp.message(F.text == '❓ Помощь')
 async def cmd_help(message:Message) -> None:
+    
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(message.from_user.id)
+    
     await message.answer(
         "📚 Что я умею:\n\n"
         "📚 Учить слова - получить случайное английское слово.\n"
@@ -221,6 +267,10 @@ async def cmd_help(message:Message) -> None:
 @dp.message(Command("card"))
 @dp.message(F.text == "📚 Учить слова")
 async def send_card(message: Message) -> None:
+
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(message.from_user.id)
+    
     # Выбираем случайное слово из словаря.
     word = random.choice(WORDS)
 
@@ -374,6 +424,9 @@ def get_word_form(number: int, forms: tuple[str, str, str]) -> str:
 @dp.message(F.text == "⭐ Мои слова")
 @dp.message(Command("favourites"))
 async def get_fav_word(message: Message) -> None:
+
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(message.from_user.id)
 
     # Получаем ID пользователя.
     user_id = message.from_user.id
@@ -529,6 +582,8 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
 @dp.message(F.text == "🧠 Тренировка")
 async def start_quiz(message: Message) -> None:
 
+    await cancel_active_quiz(message.from_user.id)
+    
     keybord = InlineKeyboardMarkup(
         inline_keyboard = [
             [
@@ -564,7 +619,10 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     # ID нужен, чтобы сохранить текущее слово
     # именно для этого пользователя.
     user_id = callback.from_user.id
-
+  
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(user_id)
+  
     quiz_stats[user_id] = {
         "correct": 0,
         "total": 0,
@@ -605,10 +663,12 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     #
     # Пользователь должен самостоятельно
     # написать перевод слова.
-    await callback.message.answer(
+    question_message = await callback.message.answer(
         f"📝 Как переводится слово: {question_word['english']}?\n\n",
         reply_markup = keyboard
     )
+
+    active_quiz_message[user_id] = question_message
 
 
 # =========================
@@ -616,6 +676,7 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
 # =========================
 
 async def send_choice_quiz(message: Message, user_id: int):
+ 
     # Выбираем случайное слово,
     # которое будет правильным ответом.
     question_word = random.choice(WORDS)
@@ -655,10 +716,12 @@ async def send_choice_quiz(message: Message, user_id: int):
     )
 
     # Отправляем вопрос и кнопки
-    await message.answer(
+    question_message = await message.answer(
         f"📝 Как переводится слово: {question_word['english']}?",
         reply_markup = keyboard
     )
+
+    active_quiz_message[user_id] = question_message
 
 
 @dp.callback_query(F.data == "quiz_choice")
@@ -670,6 +733,9 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
     # Получаем ID пользователя
     user_id = callback.from_user.id
 
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(user_id)
+    
     # Создаём статистику новой тренировки.
     quiz_stats[user_id] = {
         "correct": 0,
@@ -731,16 +797,6 @@ async def finish_quiz(callback: CallbackQuery) -> None:
         accuracy_percent,
     )
 
-    # Показываем итоговый результат пользователю.
-    await callback.message.answer(
-        f"🏁 Тренировка завершена!\n\n"
-        f"Вопросов: {total_questions}\n"
-        f"Правильных: {correct_answers}\n"
-        f"Ошибок: {wrong_answers}\n"
-        f"Результат: {accuracy_percent}%\n"
-    ) 
-
-
     # Удаляем активный вопрос в зависимости от типа тренировки.
     # потому что тренировка завершена.
     if quiz_type == "choice":
@@ -749,11 +805,18 @@ async def finish_quiz(callback: CallbackQuery) -> None:
     elif quiz_type == "text":
         current_quiz_words.pop(user_id, None)
 
+    # Убираем кнопку «Завершить тренировку».
+    await hide_active_quiz_keyboard(user_id)
 
-    # Убираем старые кнопки
-    # из сообщения с вопросом.
-    await callback.message.edit_reply_markup(reply_markup = None)
-
+    # Показываем итоговый результат пользователю.
+    await callback.message.answer(
+        f"🏁 Тренировка завершена!\n\n"
+        f"Вопросов: {total_questions}\n"
+        f"Правильных: {correct_answers}\n"
+        f"Ошибок: {wrong_answers}\n"
+        f"Результат: {accuracy_percent}%\n"
+    ) 
+    
 
 # =========================
 # ПРОВЕРКА ОТВЕТА НА ТЕСТ ПО ВЫБОРУ
@@ -773,12 +836,15 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
 
     # Проверяем, есть ли активный вопрос
     if user_id not in current_choice_quiz_words:
-        await callback.answer("Этот вопрос уже отвечен.")
+        await callback.message.answer("Этот вопрос уже отвечен.")
         return
 
     # Получаем правильное слово и удаляем его из текущего теста
     correct_word = current_choice_quiz_words.pop(user_id)
 
+    # Ответ выбран - убираем кнопки со старого вопроса.
+    await hide_active_quiz_keyboard(user_id)
+    
     # Пока выбранное слово не найдено
     selected_word = None
 
@@ -813,9 +879,6 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
             f"Правильный ответ: {correct_word['russian']}"
         )
 
-    # Убираем кнопки из старого вопроса
-    await callback.message.edit_reply_markup(reply_markup=None)
-
     await send_choice_quiz(callback.message, user_id)
 
 
@@ -827,6 +890,10 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
 @dp.message(Command("stats"))
 @dp.message(F.text == "📊 Моя статистика")
 async def show_stats(message: Message) -> None:
+
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(message.from_user.id)
+    
     # Получаем ID пользователя,
     # чтобы загрузить именно его статистику.
     user_id = message.from_user.id
@@ -883,6 +950,10 @@ async def show_stats(message: Message) -> None:
 
 @dp.message(Command("reset_stats"))
 async def reset_user_stats(message: Message) -> None:
+
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(message.from_user.id)
+    
     # Определяем, статистику какого пользователя нужно сбросить.
     user_id = message.from_user.id
 
@@ -913,7 +984,10 @@ async def handle_text(message: Message) -> None:
         # Получаем слово, которое пользователь должен был перевести,
         # и сразу удаляем его из текущего теста.
         correct_word = current_quiz_words.pop(user_id)
-
+        
+        # Ответ получен - кнопка завершения на старом вопросе больше не нужна.
+        await hide_active_quiz_keyboard(user_id)
+        
         # В БД может быть несколько переводов:
         #
         # "завод, фабрика"
@@ -978,11 +1052,11 @@ async def handle_text(message: Message) -> None:
             ]
         )
 
-        await message.answer(
+        question_message = await message.answer(
             f"📝 Как переводится слово: {next_word['english']}?",
             reply_markup = keyboard
         )
-
+        active_quiz_message[user_id] = question_message
         # Останавливаем обработчик
         return
 
@@ -998,7 +1072,7 @@ async def handle_text(message: Message) -> None:
 
 
 async def main() -> None:
-
+    
     # Регистрируем команды, которые Telegram
     # будет показывать пользователю.
     await bot.set_my_commands(
