@@ -106,7 +106,7 @@ async def safe_callback_answer(callback: CallbackQuery, text: str = "") -> None:
 
 
 # Получаем токен бота из .env.
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("TEST_BOT_TOKEN")
 if not BOT_TOKEN:
     raise RuntimeError("Не найден BOT_TOKEN. Добавь его в файл .env")
 
@@ -549,7 +549,7 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
 
     # Получаем ID пользователя, который нажал кнопку.
     user_id = callback.from_user.id
-
+    
     # Получаем все сохранённые слова этого пользователя из базы данных.
     favourite_words = get_fav_words_in_db(user_id)
 
@@ -558,20 +558,34 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
         await callback.message.answer(
             "⭐ У тебя пока нет сохранённых слов."
         )
-
         return
 
-    # Выбираем случайное слово из сохранённых слов пользователя.
-    question_word = random.choice(favourite_words)
-
-    # Сохраняем выбранное слово как текущее слово для проверки ответа.
-    current_quiz_words[user_id] = question_word
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard = [
+            [
+                InlineKeyboardButton(text = "🎯 Выбор ответа", callback_data = "favourite_quiz_choice")
+            ],
+            [
+                InlineKeyboardButton(text = "✍️ Написать ответ", callback_data = "favourite_quiz_text")
+            ]
+        ]
+    )
 
     # Отправляем пользователю вопрос для тренировки.
     await callback.message.answer(
-        f"📝 Как переводится слово: {question_word['english']}?"
+        "🧠 Выбери режим тренировки:",
+        reply_markup = keyboard
     )
 
+
+# =========================
+# СТАРТ ТЕКСТОВОГО ТЕСТА ИЗБРАННЫХ СЛОВ
+# =========================
+
+@dp.callback_query(F.data == "favourite_quiz_text")
+async def start_fav_text_quiz(callback: CallbackQuery) -> None:
+    
+    await safe_callback_answer(callback)
 
 # =========================
 # НАЧАЛО ТЕСТА
@@ -584,7 +598,7 @@ async def start_quiz(message: Message) -> None:
 
     await cancel_active_quiz(message.from_user.id)
     
-    keybord = InlineKeyboardMarkup(
+    keyboard = InlineKeyboardMarkup(
         inline_keyboard = [
             [
                 InlineKeyboardButton(text = "🎯 Выбор ответа", callback_data = "quiz_choice")
@@ -597,7 +611,7 @@ async def start_quiz(message: Message) -> None:
 
     await message.answer(
         "🧠 Выбери режим тренировки:",
-        reply_markup = keybord
+        reply_markup = keyboard
     )
 
 # =========================
