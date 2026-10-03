@@ -106,7 +106,7 @@ async def safe_callback_answer(callback: CallbackQuery, text: str = "") -> None:
 
 
 # Получаем токен бота из .env.
-BOT_TOKEN = os.getenv("TEST_BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise RuntimeError("Не найден BOT_TOKEN. Добавь его в файл .env")
 
