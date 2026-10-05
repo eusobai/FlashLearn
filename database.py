@@ -244,7 +244,7 @@ def get_fav_words_in_db(user_id: int):
         cursor.execute(
             """
             SELECT 
-                words.id AS word_id,
+                words.id,
                 words.english, 
                 words.russian,
                 words.definition,

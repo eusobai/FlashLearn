@@ -112,7 +112,7 @@ if not BOT_TOKEN:
 
 
 # Создаём объект бота и диспетчер.
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token = BOT_TOKEN)
 dp = Dispatcher()
 
 
@@ -429,7 +429,9 @@ async def get_fav_word(message: Message) -> None:
     # Получаем ID пользователя.
     user_id = message.from_user.id
 
-    # Получаем все избранные слова этого пользователя из БД.
+    # Получ
+    # 
+    # аем все избранные слова этого пользователя из БД.
     fav_words = get_fav_words_in_db(user_id)
 
     # Если избранных слов нет, сообщаем об этом пользователю.
@@ -462,7 +464,7 @@ async def get_fav_word(message: Message) -> None:
             [
                 InlineKeyboardButton(
                     text = f"🗑 Удалить {item['english']}",
-                    callback_data = f"remove_fav_word:{item['word_id']}"
+                    callback_data = f"remove_fav_word:{item['id']}"
                 )
             ]
         )
@@ -631,6 +633,96 @@ async def start_fav_text_quiz(callback: CallbackQuery) -> None:
     # Сохраняем сообщение с текущим вопросом,
     # чтобы позже можно было работать именно с ним.
     active_quiz_message[user_id] = question_message
+
+
+# =========================
+# СТАРТ ТЕСТА С ВЫБОРАМИ ИЗ ИЗБРАННЫХ СЛОВ
+# =========================
+
+async def send_fav_choice_quiz(message: Message, user_id: int):
+
+    favourite_words = get_fav_words_in_db(user_id)
+
+    # Для теста с вариантами нужно минимум 2 слова.
+    if (len(favourite_words) < 2):
+        await message.answer("⭐ Для тренировки с вариантами нужно минимум 2 избранных слова.")
+        return
+
+    question_word = random.choice(get_fav_words_in_db(user_id))
+
+    # Запоминаем правильный ответ для этого пользователя.
+    #
+    # Например:
+    # current_choice_quiz_words[123] = question_word
+    #
+    # Позже обработчик ответа достанет это слово
+    # и сравнит его с выбранным пользователем вариантом.
+    current_choice_quiz_words[user_id] = question_word
+
+    wrong_answers = [
+        item 
+        for item in favourite_words 
+        if item["id"] != question_word["id"] 
+    ]
+
+    # Нам нужно максимум 3 неправильных ответа.
+    wrong_answers = wrong_answers[:3]
+
+    options = [question_word, *wrong_answers]
+
+    random.shuffle(options)
+    
+    buttons = []
+
+    for option in options:
+        buttons.append(
+            [
+                InlineKeyboardButton(text = option["russian"], callback_data = f"choice:{option["id"]}")
+            ]
+        )
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                text = "🛑 Завершить тренировку", 
+                callback_data = "finish_quiz"
+            )
+        ]
+    )
+    
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard = buttons
+    )
+
+    question_message = await message.answer(
+        f"📝 Как переводится слово: {question_word['english']}?",
+        reply_markup = keyboard
+    )
+
+    active_quiz_message[user_id] = question_message 
+
+
+
+@dp.callback_query(F.data == "favourite_quiz_choice")
+async def start_fav_choice_quiz(callback: CallbackQuery) -> None:
+
+    await safe_callback_answer(callback)
+
+    user_id = callback.from_user.id
+
+    await cancel_active_quiz(user_id)
+     
+    active_quiz_stats[user_id] = {
+        "correct": 0,
+        "total": 0,
+        "type": "favourite_choice"
+    }
+    
+    logger.info(
+        "Favourite choice quiz started | user_id=%s",
+        user_id
+    )
+    
+    await send_fav_choice_quiz(callback.message, user_id)
 
 
 # =========================
@@ -939,8 +1031,10 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
             f"Правильный ответ: {correct_word['russian']}"
         )
 
-    await send_choice_quiz(callback.message, user_id)
-
+    if (active_quiz_stats[user_id]["type"] == "choice"):
+        await send_choice_quiz(callback.message, user_id)
+    elif (active_quiz_stats[user_id]["type"] == "favourite_choice"):
+        await send_fav_choice_quiz(callback.message, user_id)
 
 # =========================
 # СТАТИСТИКА
