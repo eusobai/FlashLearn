@@ -130,18 +130,16 @@ WORDS = get_words()
 current_quiz_words = {}
 current_choice_quiz_words = {}
 
-# Здесь временно хранится статистика текущей тренировки
-# с вариантами ответа.
-#
+# Временная статистика активных тренировок: текстовых и с вариантами.
 # Например:
-# choice_quiz_stats[123] = {
+# ative_quiz_stats[123] = {
 #     "correct": 3,
 #     "total": 5
 # }
 #
 # Эта статистика не хранится в БД.
 # Она нужна только пока пользователь проходит одну тренировку.
-quiz_stats = {}
+active_quiz_stats = {}
 
 # Хранит последнее сообщение с вопросом тренировки каждого пользователя.
 # Нужно, чтобы потом убрать с него кнопку «Завершить тренировку».
@@ -174,7 +172,7 @@ async def cancel_active_quiz(user_id) -> None:
     await hide_active_quiz_keyboard(user_id)
 
     # Полностью очищаем временные данные старой тренировки.
-    quiz_stats.pop(user_id, None)
+    active_quiz_stats.pop(user_id, None)
     current_choice_quiz_words.pop(user_id, None)
     current_quiz_words.pop(user_id, None)
     
@@ -295,7 +293,7 @@ async def send_card(message: Message) -> None:
     )
 
     # Создаём inline-клавиатуру и помещаем кнопку в неё.
-    favorite_keybord = InlineKeyboardMarkup(inline_keyboard=[[favourite_button]])
+    favorite_keyboard = InlineKeyboardMarkup(inline_keyboard=[[favourite_button]])
 
     # Отправляем карточку и прикрепляем inline-кнопку.
     await message.answer(
@@ -304,7 +302,7 @@ async def send_card(message: Message) -> None:
         f"📖 Определение: {word['definition']}\n"
         f"💬 Пример: {word['example']}\n"
         f"🔊 Произношение: {word['pronunciation']}",
-        reply_markup=favorite_keybord,
+        reply_markup=favorite_keyboard,
         parse_mode = "HTML"
     )
 
@@ -348,7 +346,7 @@ async def handle_add_favourite(callback: CallbackQuery) -> None:
             word = item
             break
 
-    # Если слово не найдено в БД,
+    # Если слова нет в загруженном словаре WORDS.
     # прекращаем выполнение обработчика.
     if word is None:
         await callback.message.answer("❌ Слово не найдено.")
@@ -578,14 +576,62 @@ async def start_fav_quiz(callback: CallbackQuery) -> None:
     )
 
 
+
+
 # =========================
 # СТАРТ ТЕКСТОВОГО ТЕСТА ИЗБРАННЫХ СЛОВ
 # =========================
 
 @dp.callback_query(F.data == "favourite_quiz_text")
 async def start_fav_text_quiz(callback: CallbackQuery) -> None:
-    
+
+    # Сразу отвечаем на callback, чтобы Telegram убрал индикатор загрузки
+    # после нажатия пользователем на кнопку.    
     await safe_callback_answer(callback)
+
+    user_id = callback.from_user.id
+
+    # Получаем все избранные слова пользователя
+    # и случайно выбираем первое слово для тренировки.
+    question_favourite_word = random.choice(get_fav_words_in_db(user_id))
+    
+    # Если у пользователя уже была другая активная тренировка,
+    # завершаем её перед запуском новой.
+    await cancel_active_quiz(user_id)
+
+    # Создаём статистику новой тренировки.
+    active_quiz_stats[user_id] = {
+        "correct": 0,
+        "total": 0,
+        "type": "favourite_text"
+    }
+
+    logger.info(
+        "Favourite text quiz started | user_id=%s",
+        user_id
+    )
+    
+    # Сохраняем выбранное слово как текущее слово пользователя.
+    # Именно его перевод пользователь должен написать сейчас.
+    current_quiz_words[user_id] = question_favourite_word
+
+    # Создаём кнопку для досрочного завершения тренировки.
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard = [
+            [InlineKeyboardButton( text="🛑 Завершить тренировку", callback_data="finish_quiz")]
+        ]
+    )
+
+    # Отправляем пользователю первый вопрос тренировки.
+    question_message = await callback.message.answer(
+        f"📝 Как переводится слово: {question_favourite_word['english']}?\n\n",
+        reply_markup = keyboard
+    )
+
+    # Сохраняем сообщение с текущим вопросом,
+    # чтобы позже можно было работать именно с ним.
+    active_quiz_message[user_id] = question_message
+
 
 # =========================
 # НАЧАЛО ТЕСТА
@@ -637,7 +683,7 @@ async def start_text_quiz(callback: CallbackQuery) -> None:
     # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
     await cancel_active_quiz(user_id)
   
-    quiz_stats[user_id] = {
+    active_quiz_stats[user_id] = {
         "correct": 0,
         "total": 0,
         "type": "text"
@@ -751,7 +797,7 @@ async def start_choice_quiz(callback: CallbackQuery) -> None:
     await cancel_active_quiz(user_id)
     
     # Создаём статистику новой тренировки.
-    quiz_stats[user_id] = {
+    active_quiz_stats[user_id] = {
         "correct": 0,
         "total": 0,
         "type": "choice"
@@ -777,7 +823,7 @@ async def finish_quiz(callback: CallbackQuery) -> None:
     user_id = callback.from_user.id
 
     # Удаляем статистику текущей тренировки.
-    stats = quiz_stats.pop(user_id, None)
+    stats = active_quiz_stats.pop(user_id, None)
 
     # Проверяем, существует ли ещё текущая тренировка.    
     if not stats:
@@ -871,7 +917,7 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
     # Проверяем, совпадает ли выбранное слово с правильным
     is_correct = selected_word["id"] == correct_word["id"]
     
-    quiz_stats[user_id]["total"] += 1
+    active_quiz_stats[user_id]["total"] += 1
 
     # Обновляем статистику пользователя
     update_stats_in_db(user_id, is_correct)
@@ -885,7 +931,7 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
 
     # Показываем результат
     if is_correct:
-        quiz_stats[user_id]["correct"] += 1
+        active_quiz_stats[user_id]["correct"] += 1
         await callback.message.answer("✅ Правильно!")
     else:
         await callback.message.answer(
@@ -985,7 +1031,7 @@ async def reset_user_stats(message: Message) -> None:
 
 
 @dp.message(F.text)
-async def handle_text(message: Message) -> None:
+async def handle_text_answer(message: Message) -> None:
     user_id = message.from_user.id
 
     # Получаем текст ответа пользователя.
@@ -1019,7 +1065,7 @@ async def handle_text(message: Message) -> None:
         is_correct = text.lower() in correct_answers
 
         # Обновляем статистику текущей тренировки.
-        quiz_stats[user_id]["total"] += 1
+        active_quiz_stats[user_id]["total"] += 1
         
         # Обновляем статистику пользователя в БД.
         update_stats_in_db(user_id, is_correct)
@@ -1034,7 +1080,7 @@ async def handle_text(message: Message) -> None:
         if is_correct:
             # Находим все правильные варианты,
             # кроме того, который уже написал пользователь.
-            quiz_stats[user_id]["correct"] += 1
+            active_quiz_stats[user_id]["correct"] += 1
 
             other_answers = [
                 answer for answer in correct_answers 
@@ -1055,9 +1101,21 @@ async def handle_text(message: Message) -> None:
             await message.answer(
                 "❌ Неправильно.\n\n" f"Правильные ответы: {', '.join(correct_answers)}"
             )
-        
-        next_word = random.choice(WORDS)
 
+        # Сюда будем записывать следующее слово для следующего вопроса.
+        next_word = None
+
+        # Если это обычная текстовая тренировка,
+        # берём следующее слово из общего списка WORDS.
+        if (active_quiz_stats[user_id]["type"] == "text"):
+            next_word = random.choice(WORDS)
+
+        # Если это текстовая тренировка только из избранных слов,
+        # берём следующее слово только из избранных слов пользователя.
+        elif (active_quiz_stats[user_id]["type"] == "favourite_text"):
+            next_word = random.choice(get_fav_words_in_db(user_id))    
+
+        # Сохраняем выбранное слово как текущее слово для следующего ответа пользователя.
         current_quiz_words[user_id] = next_word
 
         keyboard = InlineKeyboardMarkup(
