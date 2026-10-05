@@ -677,7 +677,7 @@ async def send_fav_choice_quiz(message: Message, user_id: int):
     for option in options:
         buttons.append(
             [
-                InlineKeyboardButton(text = option["russian"], callback_data = f"choice:{option["id"]}")
+                InlineKeyboardButton(text = option["russian"], callback_data = f"choice:{option['id']}")
             ]
         )
     buttons.append(
