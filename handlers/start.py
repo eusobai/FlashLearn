@@ -11,7 +11,7 @@ from aiogram.filters import CommandStart
 # Типы Telegram-объектов.
 from aiogram.types import Message
 
-# Функции для работы с базой данных.
+# Функция для отмены активной тренировки пользователя.
 from handlers.quiz import cancel_active_quiz
 
 # Логгер проекта для записи информации и ошибок.

@@ -1,5 +1,8 @@
-import random
+# =========================
+# ИМПОРТЫ
+# =========================
 
+import random
 
 # Основные классы aiogram.
 from aiogram import Router, F

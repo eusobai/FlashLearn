@@ -4,7 +4,6 @@
 
 import os
 import asyncio
-import random
 
 # from MODULES
 from utils.logger import logger
@@ -19,7 +18,7 @@ from handlers.quiz import (
 )
 
 # HANDLERS
-from handlers import start, help, cards
+from handlers import start, help, cards, favourites
 
 
 # Основные классы aiogram для создания бота и диспетчера.
@@ -67,24 +66,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
-# Безопасно подтверждает нажатие inline-кнопки.
-# Это нужно делать сразу, чтобы у пользователя не крутилась загрузка.
-async def safe_callback_answer(callback: CallbackQuery, text: str = "") -> None:
-    try:
-        await callback.answer(text = text)  # сразу останавливает загрузку кнопки
-    except TelegramBadRequest as error:
-        # Такая ошибка возникает, если нажатие слишком старое:
-        # например, сервер временно не мог связаться с Telegram.
-        if "query is too old" in str(error):
-            logger.warning(
-                "Старое нажатие кнопки пропущено | user_id=%s",
-                callback.from_user.id,
-            )
-        else:
-            # Другие ошибки не скрываем — их нужно видеть в логах.
-            raise
-
 # =========================
 # НАСТРОЙКА BOT TOKEN
 # =========================
@@ -130,63 +111,7 @@ dp.include_router(cards.router)
 # # ДОБАВЛЕНИЕ В ИЗБРАННОЕ
 # # =========================
 
-
-
-# # Обработчик срабатывает, когда пользователь нажимает
-# # inline-кнопку, у которой callback_data начинается с "favourite:".
-# @dp.callback_query(F.data.startswith("favourite:"))
-# async def handle_add_favourite(callback: CallbackQuery) -> None:
-
-#     # Сразу убираем загрузку у нажатой inline-кнопки.
-#     await safe_callback_answer(callback, "⏳ Добавляю слово...")
-
-#     # Получаем Telegram ID пользователя,
-#     # который нажал кнопку.
-#     user_id = callback.from_user.id
-
-#     # Получаем callback_data.
-#     #
-#     # Например:
-#     # "favourite:85"
-#     #
-#     # split(":", 1) разделяет строку только один раз:
-#     #
-#     # ["favourite", "85"]
-#     #
-#     # [1] берёт второй элемент — "85".
-#     word_id = int(callback.data.split(":", 1)[1])
-
-#     # Пока слово не найдено.
-#     word = None
-
-#     # Ищем полную запись слова в WORDS.
-#     for item in WORDS:
-#         if item["id"] == word_id:
-#             word = item
-#             break
-
-#     # Если слова нет в загруженном словаре WORDS.
-#     # прекращаем выполнение обработчика.
-#     if word is None:
-#         await callback.message.answer("❌ Слово не найдено.")
-#         return
-
-#     # Сохраняем в БД:
-#     # ID пользователя,
-#     # ID Слова
-#     add_fav_word_to_db(user_id, word["id"])
-
-#     logger.info(
-#         "The favourite word has been added | user_id=%s | word=%s | translation=%s",
-#         user_id,
-#         word["english"],
-#         word["russian"],
-#     )
-
-#     # Показываем пользователю небольшое уведомление
-#     # после успешного добавления.
-#     await callback.message.answer("⭐ Добавлен в мои слова!")
-
+dp.include_router(favourites.router)
 
 # # =========================
 # # ПОЛУЧЕНИЕ ИЗБРАННЫХ СЛОВ
