@@ -122,69 +122,6 @@ dp.include_router(quiz.router)
 
 
 
-# @dp.callback_query(F.data == "finish_quiz")
-# async def finish_quiz(callback: CallbackQuery) -> None:
-
-#     # Сразу убираем загрузку у нажатой inline-кнопки.
-#     await safe_callback_answer(callback)
-
-#     user_id = callback.from_user.id
-
-#     # Удаляем статистику текущей тренировки.
-#     stats = active_quiz_stats.pop(user_id, None)
-
-#     # Проверяем, существует ли ещё текущая тренировка.    
-#     if not stats:
-#         return
-
-#     # Получаем тип текущей тренировки.
-#     quiz_type = stats["type"] 
-
-#     # Получаем общее количество отвеченных вопросов.
-#     total_questions = stats["total"]
-    
-#     # Получаем количество правильных ответов.
-#     correct_answers = stats["correct"]
-
-#     # Количество ошибок
-#     wrong_answers = total_questions - correct_answers
-
-#     # Вычисляем процент правильных ответов.
-#     accuracy_percent = (
-#         round(correct_answers / total_questions * 100)
-#         if(total_questions)
-#         else 0 
-#     )
-
-#     logger.info(
-#         "Quiz finished | user_id=%s | type=%s | total=%s | correct=%s | accuracy=%s%%",
-#         user_id,
-#         quiz_type,
-#         total_questions,
-#         correct_answers,
-#         accuracy_percent,
-#     )
-
-#     # Удаляем активный вопрос в зависимости от типа тренировки.
-#     # потому что тренировка завершена.
-#     if quiz_type == "choice":
-#         current_choice_quiz_words.pop(user_id, None)
-
-#     elif quiz_type == "text":
-#         current_quiz_words.pop(user_id, None)
-
-#     # Убираем кнопку «Завершить тренировку».
-#     await hide_active_quiz_keyboard(user_id)
-
-#     # Показываем итоговый результат пользователю.
-#     await callback.message.answer(
-#         f"🏁 Тренировка завершена!\n\n"
-#         f"Вопросов: {total_questions}\n"
-#         f"Правильных: {correct_answers}\n"
-#         f"Ошибок: {wrong_answers}\n"
-#         f"Результат: {accuracy_percent}%\n"
-#     ) 
-    
 
 # # =========================
 # # ПРОВЕРКА ОТВЕТА НА ТЕСТ ПО ВЫБОРУ
