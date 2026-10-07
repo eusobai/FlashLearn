@@ -281,3 +281,6 @@ def delete_fav_word_in_db(user_id:int, word_id: int) -> None:
         )
 
         cursor.close()
+
+
+WORDS = get_words()

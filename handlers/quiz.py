@@ -1,6 +1,12 @@
+# =========================
+# ИМПОРТЫ
+# =========================
 
+# Обрабатывает ошибки Telegram, например,
+# когда пользователь нажимает на устаревшую inline-кнопку.
 from aiogram.exceptions import TelegramBadRequest
 
+# Логгер проекта для записи информации и ошибок.
 from utils.logger import logger
 
 

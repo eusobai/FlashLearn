@@ -2,17 +2,26 @@
 # ИМПОРТЫ
 # =========================
 
+# Основные классы aiogram.
 from aiogram import Router
+
+# Фильтры Telegram-команд.
 from aiogram.filters import CommandStart
+
+# Типы Telegram-объектов.
 from aiogram.types import Message
 
-from keyboards.main_keyboard import main_keyboard
-
-from utils.logger import logger
-
+# Функции для работы с базой данных.
 from handlers.quiz import cancel_active_quiz
 
+# Логгер проекта для записи информации и ошибок.
+from utils.logger import logger
+
+# Функции для работы с базой данных.
 from database.database import add_user_to_db
+
+# Главная клавиатура
+from keyboards.main_keyboard import main_keyboard
 
 router = Router()
 

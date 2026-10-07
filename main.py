@@ -8,6 +8,7 @@ import random
 
 # from MODULES
 from utils.logger import logger
+
 from handlers.quiz import (
     current_quiz_words, 
     current_choice_quiz_words,
@@ -18,7 +19,7 @@ from handlers.quiz import (
 )
 
 # HANDLERS
-from handlers import start, help
+from handlers import start, help, cards
 
 
 # Основные классы aiogram для создания бота и диспетчера.
@@ -34,10 +35,7 @@ from aiogram.filters import CommandStart, Command
 # InlineKeyboardButton и InlineKeyboardMarkup — inline-кнопки,
 # CallbackQuery — нажатие inline-кнопки.
 from aiogram.types import (
-    Message,
     BotCommand,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
     CallbackQuery,
 )
 
@@ -93,7 +91,7 @@ async def safe_callback_answer(callback: CallbackQuery, text: str = "") -> None:
 
 
 # Получаем токен бота из .env.
-BOT_TOKEN = os.getenv("TEST_BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise RuntimeError("Не найден BOT_TOKEN. Добавь его в файл .env")
 
@@ -106,11 +104,14 @@ dp = Dispatcher()
 # =========================
 # ЗАГРУЗКА СЛОВАРЯ
 # =========================
-WORDS = get_words()
+# WORDS = get_words()
 
-
+# =========================
+# /START
+# =========================
 
 dp.include_router(start.router)
+
 
 # =========================
 # /HELP
@@ -118,55 +119,12 @@ dp.include_router(start.router)
 
 dp.include_router(help.router)
 
+
 # =========================
 # КАРТОЧКА
 # =========================
 
-
-# @dp.message(Command("card"))
-# @dp.message(F.text == "📚 Учить слова")
-# async def send_card(message: Message) -> None:
-
-#     # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
-#     await cancel_active_quiz(message.from_user.id)
-    
-#     # Выбираем случайное слово из словаря.
-#     word = random.choice(WORDS)
-
-#     username = message.from_user.username if message.from_user.username else "unknown"
-
-#     logger.info("Card sent | username=%s | word=%s", username, word["english"])
-
-#     # Создаём inline-кнопку.
-#     #
-#     # text — текст, который видит пользователь.
-#     #
-#     # callback_data — данные, которые получит бот
-#     # после нажатия кнопки.
-#     #
-#     # Например:
-#     # favourite:factory
-#     #
-#     # Благодаря этому бот знает,
-#     # какое слово нужно добавить в избранное.
-#     favourite_button = InlineKeyboardButton(
-#         text = "⭐ Добавить в мои слова", callback_data=f"favourite:{word['id']}"
-#     )
-
-#     # Создаём inline-клавиатуру и помещаем кнопку в неё.
-#     favorite_keyboard = InlineKeyboardMarkup(inline_keyboard=[[favourite_button]])
-
-#     # Отправляем карточку и прикрепляем inline-кнопку.
-#     await message.answer(
-#         f"📚 Слово: <b>{word['english']}</b>\n"
-#         f"RU Перевод: {word['russian']}\n"
-#         f"📖 Определение: {word['definition']}\n"
-#         f"💬 Пример: {word['example']}\n"
-#         f"🔊 Произношение: {word['pronunciation']}",
-#         reply_markup=favorite_keyboard,
-#         parse_mode = "HTML"
-#     )
-
+dp.include_router(cards.router)
 
 # # =========================
 # # ДОБАВЛЕНИЕ В ИЗБРАННОЕ

@@ -1,11 +1,21 @@
+
+# Основные классы aiogram.
 from aiogram import Router, F
+
+# Фильтры Telegram-команд.
 from aiogram.filters import Command
 
-from handlers.quiz import cancel_active_quiz
-
+# Типы Telegram-объектов.
 from aiogram.types import Message
 
+# MODULES
+from handlers.quiz import cancel_active_quiz
+
+# =========================
+# ROUTER
+# =========================
 router = Router()
+
 
 @router.message(Command('help'))
 @router.message(F.text == '❓ Помощь')
