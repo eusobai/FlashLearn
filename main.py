@@ -109,48 +109,6 @@ dp.include_router(cards.router)
 dp.include_router(favourites.router)
 
 
-# # =========================
-# # НАЧАЛО ТРЕНИРОВКИ ИЗБРАННЫХ СЛОВ
-# # =========================
-
-# @dp.callback_query(F.data == "quiz_favourites")
-# async def start_fav_quiz(callback: CallbackQuery) -> None:
-
-#     # Сразу убираем загрузку у нажатой inline-кнопки.
-#     await safe_callback_answer(callback)
-
-#     # Получаем ID пользователя, который нажал кнопку.
-#     user_id = callback.from_user.id
-    
-#     # Получаем все сохранённые слова этого пользователя из базы данных.
-#     favourite_words = get_fav_words_in_db(user_id)
-
-#     # Если сохранённых слов нет, сообщаем об этом пользователю.
-#     if not favourite_words:
-#         await callback.message.answer(
-#             "⭐ У тебя пока нет сохранённых слов."
-#         )
-#         return
-
-#     keyboard = InlineKeyboardMarkup(
-#         inline_keyboard = [
-#             [
-#                 InlineKeyboardButton(text = "🎯 Выбор ответа", callback_data = "favourite_quiz_choice")
-#             ],
-#             [
-#                 InlineKeyboardButton(text = "✍️ Написать ответ", callback_data = "favourite_quiz_text")
-#             ]
-#         ]
-#     )
-
-#     # Отправляем пользователю вопрос для тренировки.
-#     await callback.message.answer(
-#         "🧠 Выбери режим тренировки:",
-#         reply_markup = keyboard
-#     )
-
-
-
 
 # # =========================
 # # СТАРТ ТЕКСТОВОГО ТЕСТА ИЗБРАННЫХ СЛОВ
