@@ -117,88 +117,8 @@ dp.include_router(favourites.router)
 
 
 
-# # =========================
-# # СТАРТ ТЕСТА С ВЫБОРАМИ
-# # =========================
 
 dp.include_router(quiz.router)
-
-# async def send_choice_quiz(message: Message, user_id: int):
- 
-#     # Выбираем случайное слово,
-#     # которое будет правильным ответом.
-#     question_word = random.choice(WORDS)
-
-#     # Запоминаем правильный ответ для этого пользователя.
-#     #
-#     # Например:
-#     # current_choice_quiz_words[123] = question_word
-#     #
-#     # Позже обработчик ответа достанет это слово
-#     # и сравнит его с выбранным пользователем вариантом.
-#     current_choice_quiz_words[user_id] = question_word
-
-#     # Выбираем 3 неправильных слова
-#     wrong_words = random.sample(
-#         [item for item in WORDS if item["id"] != question_word["id"]],
-#         3
-#     )
-
-#     # Объединяем правильный и неправильные ответы
-#     options = [question_word, *wrong_words]
-    
-#     # Перемешиваем варианты,
-#     # чтобы правильный ответ каждый раз
-#     # находился на случайной позиции.
-#     random.shuffle(options)
-
-#     # Создаём кнопки с вариантами    
-#     keyboard = InlineKeyboardMarkup(
-#         inline_keyboard = [
-#             [InlineKeyboardButton(text = options[0]['russian'], callback_data = f"choice:{options[0]['id']}")],
-#             [InlineKeyboardButton(text = options[1]['russian'], callback_data = f"choice:{options[1]['id']}")],
-#             [InlineKeyboardButton(text = options[2]['russian'], callback_data = f"choice:{options[2]['id']}")],
-#             [InlineKeyboardButton(text = options[3]['russian'], callback_data = f"choice:{options[3]['id']}")],
-#             [InlineKeyboardButton(text = "🛑 Завершить тренировку", callback_data = "finish_quiz")]
-#         ]
-#     )
-
-#     # Отправляем вопрос и кнопки
-#     question_message = await message.answer(
-#         f"📝 Как переводится слово: {question_word['english']}?",
-#         reply_markup = keyboard
-#     )
-
-#     active_quiz_message[user_id] = question_message
-
-
-# @dp.callback_query(F.data == "quiz_choice")
-# async def start_choice_quiz(callback: CallbackQuery) -> None:
-
-#     # Сразу убираем загрузку у нажатой inline-кнопки.
-#     await safe_callback_answer(callback)
-
-#     # Получаем ID пользователя
-#     user_id = callback.from_user.id
-
-#     # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
-#     await cancel_active_quiz(user_id)
-    
-#     # Создаём статистику новой тренировки.
-#     active_quiz_stats[user_id] = {
-#         "correct": 0,
-#         "total": 0,
-#         "type": "choice"
-#     }
-
-#     logger.info(
-#         "Choice quiz started | user_id=%s",
-#         user_id
-#     )
-
-    
-#     # Отправляем первый вопрос тренировки.
-#     await send_choice_quiz(callback.message, user_id)
 
 
 
