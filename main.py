@@ -110,60 +110,6 @@ dp.include_router(favourites.router)
 
 
 
-# # =========================
-# # СТАРТ ТЕКСТОВОГО ТЕСТА ИЗБРАННЫХ СЛОВ
-# # =========================
-
-# @dp.callback_query(F.data == "favourite_quiz_text")
-# async def start_fav_text_quiz(callback: CallbackQuery) -> None:
-
-#     # Сразу отвечаем на callback, чтобы Telegram убрал индикатор загрузки
-#     # после нажатия пользователем на кнопку.    
-#     await safe_callback_answer(callback)
-
-#     user_id = callback.from_user.id
-
-#     # Получаем все избранные слова пользователя
-#     # и случайно выбираем первое слово для тренировки.
-#     question_favourite_word = random.choice(get_fav_words_in_db(user_id))
-    
-#     # Если у пользователя уже была другая активная тренировка,
-#     # завершаем её перед запуском новой.
-#     await cancel_active_quiz(user_id)
-
-#     # Создаём статистику новой тренировки.
-#     active_quiz_stats[user_id] = {
-#         "correct": 0,
-#         "total": 0,
-#         "type": "favourite_text"
-#     }
-
-#     logger.info(
-#         "Favourite text quiz started | user_id=%s",
-#         user_id
-#     )
-    
-#     # Сохраняем выбранное слово как текущее слово пользователя.
-#     # Именно его перевод пользователь должен написать сейчас.
-#     current_quiz_words[user_id] = question_favourite_word
-
-#     # Создаём кнопку для досрочного завершения тренировки.
-#     keyboard = InlineKeyboardMarkup(
-#         inline_keyboard = [
-#             [InlineKeyboardButton( text="🛑 Завершить тренировку", callback_data="finish_quiz")]
-#         ]
-#     )
-
-#     # Отправляем пользователю первый вопрос тренировки.
-#     question_message = await callback.message.answer(
-#         f"📝 Как переводится слово: {question_favourite_word['english']}?\n\n",
-#         reply_markup = keyboard
-#     )
-
-#     # Сохраняем сообщение с текущим вопросом,
-#     # чтобы позже можно было работать именно с ним.
-#     active_quiz_message[user_id] = question_message
-
 
 # # =========================
 # # СТАРТ ТЕСТА С ВЫБОРАМИ ИЗ ИЗБРАННЫХ СЛОВ
