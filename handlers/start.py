@@ -12,7 +12,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 # Функция для отмены активной тренировки пользователя.
-from handlers.quiz import cancel_active_quiz
+from utils.quiz_utils import cancel_active_quiz
 
 # Логгер проекта для записи информации и ошибок.
 from utils.logger import logger

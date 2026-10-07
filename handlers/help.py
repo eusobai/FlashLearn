@@ -9,7 +9,9 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 # MODULES
-from handlers.quiz import cancel_active_quiz
+
+# Функция для управления активной тренировкой.
+from utils.quiz_utils import cancel_active_quiz
 
 # =========================
 # ROUTER

@@ -17,8 +17,9 @@ from aiogram.types import (
     InlineKeyboardButton
 )
 
-# MODULES
-from handlers.quiz import cancel_active_quiz
+# Функция для управления активной тренировкой.
+from utils.quiz_utils import cancel_active_quiz
+
 from utils.logger import logger
 
 # Функции для работы с базой данных.

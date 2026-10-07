@@ -28,7 +28,7 @@ from database.database import (
 )
 
 # Функция для отмены активной тренировки пользователя.
-from handlers.quiz import cancel_active_quiz
+from utils.quiz_utils import cancel_active_quiz
 
 # Безопасно подтверждает нажатие inline-кнопки.
 # Это нужно делать сразу, чтобы у пользователя не крутилась загрузка.

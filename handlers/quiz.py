@@ -18,17 +18,28 @@ from aiogram.types import (
 
 from aiogram.filters import Command
 
-# Обрабатывает ошибки Telegram, например,
-# когда пользователь нажимает на устаревшую inline-кнопку.
-from aiogram.exceptions import TelegramBadRequest
-
 # Функции для работы с базой данных.
-from database.database import get_words
+from database.database import (
+    get_words,
+    update_stats_in_db
+)
+
+# Переменные и функции для управления активной тренировкой.
+from utils.quiz_utils import (
+    active_quiz_stats,
+    active_quiz_message,
+    current_quiz_words,
+    current_choice_quiz_words,
+    hide_active_quiz_keyboard,
+    cancel_active_quiz,
+)
 
 # Безопасно подтверждает нажатие inline-кнопки.
 # Это нужно делать сразу, чтобы у пользователя не крутилась загрузка.
 from utils.safe_calback import safe_callback_answer
 
+# 
+from handlers.favourites import send_fav_choice_quiz
 
 # Логгер проекта для записи информации и ошибок.
 from utils.logger import logger
@@ -39,63 +50,12 @@ from utils.logger import logger
 
 router = Router()
 
-# Здесь временно хранится текущее слово для каждого пользователя,
-# который проходит тест.
-#
-# current_quiz_words — текстовый тест.
-# current_choice_quiz_words — тест с вариантами ответа.
-current_quiz_words = {}
-current_choice_quiz_words = {}
-
-# Временная статистика активных тренировок: текстовых и с вариантами.
-# Например:
-# ative_quiz_stats[123] = {
-#     "correct": 3,
-#     "total": 5
-# }
-#
-# Эта статистика не хранится в БД.
-# Она нужна только пока пользователь проходит одну тренировку.
-active_quiz_stats = {}
-
-# Хранит последнее сообщение с вопросом тренировки каждого пользователя.
-# Нужно, чтобы потом убрать с него кнопку «Завершить тренировку».
-active_quiz_message = {}
-
-
 WORDS = get_words()
 
 
 # =========================
 # ФУНКЦИИ ПОМОШНИКИ
 # =========================
-
-async def hide_active_quiz_keyboard(user_id: int) -> None:
-
-    question_message = active_quiz_message.pop(user_id, None)
-    
-    if question_message is None:
-        return
-    
-    try:
-        await question_message.edit_reply_markup(reply_markup = None)
-
-    except TelegramBadRequest as error: 
-        logger.warning(
-            "Failed to remove training buttons | user_id=%s | error=%s",
-            user_id, error
-        )
-
-
-async def cancel_active_quiz(user_id) -> None:
-
-    # Убираем кнопку со старого вопроса.
-    await hide_active_quiz_keyboard(user_id)
-
-    # Полностью очищаем временные данные старой тренировки.
-    active_quiz_stats.pop(user_id, None)
-    current_choice_quiz_words.pop(user_id, None)
-    current_quiz_words.pop(user_id, None)
 
 
 # # =========================
@@ -344,4 +304,70 @@ async def finish_quiz(callback: CallbackQuery) -> None:
         f"Ошибок: {wrong_answers}\n"
         f"Результат: {accuracy_percent}%\n"
     ) 
+
+
+# =========================
+# ПРОВЕРКА ОТВЕТА НА ТЕСТ ПО ВЫБОРУ
+# =========================
+
+
+@router.callback_query(F.data.startswith("choice:"))
+async def handle_quiz_test(callback: CallbackQuery) -> None:
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
+    user_id = callback.from_user.id
+
+    # Получаем ID выбранного пользователем слова
+    word_id = int(callback.data.split(":",1)[1])
+
+    # Проверяем, есть ли активный вопрос
+    if user_id not in current_choice_quiz_words:
+        await callback.message.answer("Этот вопрос уже отвечен.")
+        return
+
+    # Получаем правильное слово и удаляем его из текущего теста
+    correct_word = current_choice_quiz_words.pop(user_id)
+
+    # Ответ выбран - убираем кнопки со старого вопроса.
+    await hide_active_quiz_keyboard(user_id)
     
+    # Пока выбранное слово не найдено
+    selected_word = None
+
+    # Ищем выбранное слово по его ID
+    for item in WORDS:
+        if(item["id"] == word_id):
+            selected_word = item
+            break
+
+    # Проверяем, совпадает ли выбранное слово с правильным
+    is_correct = selected_word["id"] == correct_word["id"]
+    
+    active_quiz_stats[user_id]["total"] += 1
+
+    # Обновляем статистику пользователя
+    update_stats_in_db(user_id, is_correct)
+
+    logger.info(
+        "Choice quiz answered | user_id=%s | correct=%s",
+        user_id,
+        is_correct,
+    )
+
+
+    # Показываем результат
+    if is_correct:
+        active_quiz_stats[user_id]["correct"] += 1
+        await callback.message.answer("✅ Правильно!")
+    else:
+        await callback.message.answer(
+            f"❌ Неправильно.\n\n"
+            f"Правильный ответ: {correct_word['russian']}"
+        )
+
+    if (active_quiz_stats[user_id]["type"] == "choice"):
+        await send_choice_quiz(callback.message, user_id)
+    elif (active_quiz_stats[user_id]["type"] == "favourite_choice"):
+        await send_fav_choice_quiz(callback.message, user_id)
