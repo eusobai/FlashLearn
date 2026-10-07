@@ -19,7 +19,8 @@ from aiogram.filters import Command
 from database.database import (
     get_words, 
     add_fav_word_to_db, 
-    get_fav_words_in_db
+    get_fav_words_in_db,
+    delete_fav_word_in_db
 )
 
 # Функция для отмены активной тренировки пользователя.
@@ -159,9 +160,7 @@ async def get_fav_word(message: Message) -> None:
     # Получаем ID пользователя.
     user_id = message.from_user.id
 
-    # Получ
-    # 
-    # аем все избранные слова этого пользователя из БД.
+    # Получаем все избранные слова этого пользователя из БД.
     fav_words = get_fav_words_in_db(user_id)
 
     # Если избранных слов нет, сообщаем об этом пользователю.
@@ -242,3 +241,28 @@ async def get_fav_word(message: Message) -> None:
         parse_mode="HTML",
         reply_markup=keyboard
     )
+
+
+# =========================
+# УДАЛЕНИЕ ИЗБРАННОГО СЛОВО
+# =========================
+
+@router.callback_query(F.data.startswith("remove_fav_word:"))
+async def delete_fav_word(callback: CallbackQuery):
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback, "⏳ Удаляю слово...")
+
+    user_id = callback.from_user.id
+
+    word_id = int(callback.data.split(":", 1)[1])
+
+    delete_fav_word_in_db(user_id, word_id)
+
+    logger.info(
+        "Favourites word has been removed | user_id=%s | word_id=%s",
+        user_id, word_id
+    )
+
+    await callback.message.answer("🗑 Слово удалено!")
+

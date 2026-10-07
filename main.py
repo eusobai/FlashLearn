@@ -72,7 +72,7 @@ load_dotenv()
 
 
 # Получаем токен бота из .env.
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("TEST_BOT_TOKEN")
 if not BOT_TOKEN:
     raise RuntimeError("Не найден BOT_TOKEN. Добавь его в файл .env")
 
@@ -81,11 +81,6 @@ if not BOT_TOKEN:
 bot = Bot(token = BOT_TOKEN)
 dp = Dispatcher()
 
-
-# =========================
-# ЗАГРУЗКА СЛОВАРЯ
-# =========================
-# WORDS = get_words()
 
 # =========================
 # /START
@@ -112,30 +107,6 @@ dp.include_router(cards.router)
 # # =========================
 
 dp.include_router(favourites.router)
-
-
-# # =========================
-# # УДАЛЕНИЕ ИЗБРАННОГО СЛОВО
-# # =========================
-
-# @dp.callback_query(F.data.startswith("remove_fav_word:"))
-# async def delete_fav_word(callback: CallbackQuery):
-
-#     # Сразу убираем загрузку у нажатой inline-кнопки.
-#     await safe_callback_answer(callback, "⏳ Удаляю слово...")
-
-#     user_id = callback.from_user.id
-
-#     word_id = int(callback.data.split(":", 1)[1])
-
-#     delete_fav_word_in_db(user_id, word_id)
-
-#     logger.info(
-#         "Favourites word has been removed | user_id=%s | word_id=%s",
-#         user_id, word_id
-#     )
-
-#     await callback.message.answer("🗑 Слово удалено!")
 
 
 # # =========================
