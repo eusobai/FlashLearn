@@ -2,13 +2,42 @@
 # ИМПОРТЫ
 # =========================
 
+# 
+import random
+
+# Основные классы aiogram.
+from aiogram import Router, F
+
+# Типы Telegram-объектов.
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    Message
+)
+
+from aiogram.filters import Command
+
 # Обрабатывает ошибки Telegram, например,
 # когда пользователь нажимает на устаревшую inline-кнопку.
 from aiogram.exceptions import TelegramBadRequest
 
+# Функции для работы с базой данных.
+from database.database import get_words
+
+# Безопасно подтверждает нажатие inline-кнопки.
+# Это нужно делать сразу, чтобы у пользователя не крутилась загрузка.
+from utils.safe_calback import safe_callback_answer
+
+
 # Логгер проекта для записи информации и ошибок.
 from utils.logger import logger
 
+# 
+# ROUTER
+# 
+
+router = Router()
 
 # Здесь временно хранится текущее слово для каждого пользователя,
 # который проходит тест.
@@ -33,6 +62,8 @@ active_quiz_stats = {}
 # Нужно, чтобы потом убрать с него кнопку «Завершить тренировку».
 active_quiz_message = {}
 
+
+WORDS = get_words
 
 
 # =========================
@@ -65,4 +96,32 @@ async def cancel_active_quiz(user_id) -> None:
     active_quiz_stats.pop(user_id, None)
     current_choice_quiz_words.pop(user_id, None)
     current_quiz_words.pop(user_id, None)
- 
+
+
+
+# =========================
+# СТАРТ ТЕСТА С РАНДОМНЫМИ СЛОВАМИ
+# =========================
+
+
+@router.message(Command("quiz"))
+@router.message(F.text == "🧠 Тренировка")
+async def start_quiz(message: Message) -> None:
+
+    await cancel_active_quiz(message.from_user.id)
+    
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard = [
+            [
+                InlineKeyboardButton(text = "🎯 Выбор ответа", callback_data = "quiz_choice")
+            ],
+            [
+                InlineKeyboardButton(text = "✍️ Написать ответ", callback_data = "quiz_text")
+            ]
+        ]
+        )
+
+    await message.answer(
+        "🧠 Выбери режим тренировки:",
+        reply_markup = keyboard
+    )

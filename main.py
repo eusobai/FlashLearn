@@ -18,8 +18,13 @@ from handlers.quiz import (
 )
 
 # HANDLERS
-from handlers import start, help, cards, favourites
-
+from handlers import (
+    start, 
+    help, 
+    cards, 
+    favourites,
+    quiz
+)
 
 # Основные классы aiogram для создания бота и диспетчера.
 from aiogram import Bot, Dispatcher, F
@@ -111,109 +116,12 @@ dp.include_router(favourites.router)
 
 
 
-#
-
-# # =========================
-# # НАЧАЛО ТЕСТА
-# # =========================
-
-
-# @dp.message(Command("quiz"))
-# @dp.message(F.text == "🧠 Тренировка")
-# async def start_quiz(message: Message) -> None:
-
-#     await cancel_active_quiz(message.from_user.id)
-    
-#     keyboard = InlineKeyboardMarkup(
-#         inline_keyboard = [
-#             [
-#                 InlineKeyboardButton(text = "🎯 Выбор ответа", callback_data = "quiz_choice")
-#             ],
-#             [
-#                 InlineKeyboardButton(text = "✍️ Написать ответ", callback_data = "quiz_text")
-#             ]
-#         ]
-#         )
-
-#     await message.answer(
-#         "🧠 Выбери режим тренировки:",
-#         reply_markup = keyboard
-#     )
-
-# # =========================
-# # СТАРТ ТЕКСТОВОГО ТЕСТА
-# # =========================
-
-# # Этот обработчик срабатывает,
-# # когда пользователь нажимает inline-кнопку
-# # "✍️ Написать ответ".
-# @dp.callback_query(F.data == "quiz_text")
-# async def start_text_quiz(callback: CallbackQuery) -> None:
-
-#     # Сразу убираем загрузку у нажатой inline-кнопки.
-#     await safe_callback_answer(callback)
-
-#     # Получаем Telegram ID пользователя,
-#     # который нажал кнопку.
-#     #
-#     # ID нужен, чтобы сохранить текущее слово
-#     # именно для этого пользователя.
-#     user_id = callback.from_user.id
-  
-#     # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
-#     await cancel_active_quiz(user_id)
-  
-#     active_quiz_stats[user_id] = {
-#         "correct": 0,
-#         "total": 0,
-#         "type": "text"
-#     }
-
-#     logger.info(
-#         "Text quiz started | user_id=%s",
-#         user_id
-#     )
-
-#     # Выбираем случайное слово из общего словаря.
-#     question_word = random.choice(WORDS)
-
-#     # Сохраняем выбранное слово в словаре current_quiz_words.
-#     #
-#     # Ключ:
-#     # user_id
-#     #
-#     # Значение:
-#     # выбранное слово
-#     #
-#     # Например:
-#     # current_quiz_words[123456] = question_word
-#     #
-#     # Благодаря этому после ответа пользователя
-#     # бот сможет понять, какое слово нужно проверить.
-#     current_quiz_words[user_id] = question_word
-
-#     keyboard = InlineKeyboardMarkup(
-#         inline_keyboard = [
-#             [InlineKeyboardButton( text="🛑 Завершить тренировку", callback_data="finish_quiz")]
-#         ]
-#     )
-
-
-#     # Отправляем пользователю вопрос.
-#     #
-#     # Пользователь должен самостоятельно
-#     # написать перевод слова.
-#     question_message = await callback.message.answer(
-#         f"📝 Как переводится слово: {question_word['english']}?\n\n",
-#         reply_markup = keyboard
-#     )
-
-#     active_quiz_message[user_id] = question_message
-
 
 # # =========================
 # # СТАРТ ТЕСТА С ВЫБОРАМИ
 # # =========================
+
+dp.include_router(quiz.router)
 
 # async def send_choice_quiz(message: Message, user_id: int):
  
