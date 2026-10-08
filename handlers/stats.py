@@ -15,7 +15,7 @@ from aiogram.types import Message
 from utils.quiz_utils import cancel_active_quiz
 
 # Функции для работы с базой данных.
-from database.database import get_stats_from_db
+from database.database import get_stats_from_db, reset_stats_in_db
 
 # Логгер проекта для записи информации и ошибок.
 from utils.logger import logger
@@ -28,7 +28,7 @@ router = Router()
 
 
 # =========================
-# СТАТИСТИКА
+# ПРОВЕРКА СТАТИСТИКИ
 # =========================
 
 
@@ -86,4 +86,25 @@ async def show_stats(message: Message) -> None:
         f"🎯 Точность: {accuracy}% \n\n"
         "🔄 Чтобы сбросить статистику, используй команду /reset_stats"
     )
+
+# =========================
+# СБРОС СТАТИСТИКИ
+# =========================
+
+
+@router.message(Command("reset_stats"))
+async def reset_user_stats(message: Message) -> None:
+
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(message.from_user.id)
+    
+    # Определяем, статистику какого пользователя нужно сбросить.
+    user_id = message.from_user.id
+
+    # Передаём ID пользователя в функцию БД.
+    reset_stats_in_db(user_id)
+
+    logger.info("The user statistics have been reset. | user_id=%s", user_id)
+
+    await message.answer("Твоя статистика успешно сброшена!")
 
