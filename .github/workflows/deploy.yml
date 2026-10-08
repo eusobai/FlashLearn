@@ -1,8 +1,17 @@
 name: Deploy FlashLearn
 
 on:
-  workflow_dispatch:
-   
+  push:
+    branches:
+      - main
+    paths:
+      - "main.py"
+      - "database/**"
+      - "handlers/**"
+      - "keyboards/**"
+      - "utils/**"
+      - "requirements.txt"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -14,8 +23,10 @@ jobs:
       - name: Upload files to Silly Development
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SILLY_SSH_PRIVATE_KEY }}
+
         run: |
           mkdir -p ~/.ssh
+
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/silly_key
           chmod 600 ~/.ssh/silly_key
 
@@ -25,16 +36,22 @@ jobs:
             -i ~/.ssh/silly_key \
             -P 2022 \
             usobaiev.8fca0402@node1.sillydev.co.uk << 'EOF'
-          put main.py main.py
-          put database.py database.py
-          put words.json words.json
-          put requirements.txt requirements.txt
+
+          put main.py
+          put requirements.txt
+
+          put -r database
+          put -r handlers
+          put -r keyboards
+          put -r utils
+
           bye
           EOF
 
       - name: Restart FlashLearn server
         env:
           SILLY_API_KEY: ${{ secrets.SILLY_API_KEY }}
+
         run: |
           curl --fail-with-body -i \
             -X POST \
