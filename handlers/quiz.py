@@ -21,7 +21,8 @@ from aiogram.filters import Command
 # Функции для работы с базой данных.
 from database.database import (
     get_words,
-    update_stats_in_db
+    update_stats_in_db,
+    get_fav_words_in_db
 )
 
 # Переменные и функции для управления активной тренировкой.
@@ -371,3 +372,117 @@ async def handle_quiz_test(callback: CallbackQuery) -> None:
         await send_choice_quiz(callback.message, user_id)
     elif (active_quiz_stats[user_id]["type"] == "favourite_choice"):
         await send_fav_choice_quiz(callback.message, user_id)
+
+
+# =========================
+# ПРОВЕРКА ОТВЕТА НА ТЕСТ
+# =========================
+
+
+@router.message(F.text)
+async def handle_text_answer(message: Message) -> None:
+    user_id = message.from_user.id
+
+    # Получаем текст ответа пользователя.
+    # strip() убирает пробелы по краям.
+    text = message.text.strip()
+
+    # Проверяем, есть ли у пользователя активный вопрос.
+    if user_id in current_quiz_words:
+
+        # Получаем слово, которое пользователь должен был перевести,
+        # и сразу удаляем его из текущего теста.
+        correct_word = current_quiz_words.pop(user_id)
+        
+        # Ответ получен - кнопка завершения на старом вопросе больше не нужна.
+        await hide_active_quiz_keyboard(user_id)
+        
+        # В БД может быть несколько переводов:
+        #
+        # "завод, фабрика"
+        #
+        # split(";") разделяет их на отдельные варианты.
+        #
+        # strip() убирает пробелы.
+        # lower() приводит всё к нижнему регистру.
+        correct_answers = [
+            answer.strip().lower() for answer in correct_word["russian"].split(";")
+        ]
+
+        # Проверяем, находится ли ответ пользователя
+        # среди допустимых переводов.
+        is_correct = text.lower() in correct_answers
+
+        # Обновляем статистику текущей тренировки.
+        active_quiz_stats[user_id]["total"] += 1
+        
+        # Обновляем статистику пользователя в БД.
+        update_stats_in_db(user_id, is_correct)
+
+        logger.info(
+            "Quiz answered | user_id=%s | correct=%s",
+            user_id,
+            is_correct,
+        )
+
+        # Если пользователь ответил правильно.
+        if is_correct:
+            # Находим все правильные варианты,
+            # кроме того, который уже написал пользователь.
+            active_quiz_stats[user_id]["correct"] += 1
+
+            other_answers = [
+                answer for answer in correct_answers 
+                if answer != text.lower()
+            ]
+
+            # Если есть другие допустимые переводы,
+            # показываем их пользователю.
+            if other_answers:
+                await message.answer(
+                    "✅ Правильно!\n\n" f"Другие варианты: {', '.join(other_answers)}"
+                )
+            else:
+                await message.answer("✅ Правильно! Молодец.")
+                
+        # Если ответ неправильный.
+        else:
+            await message.answer(
+                "❌ Неправильно.\n\n" f"Правильные ответы: {', '.join(correct_answers)}"
+            )
+
+        # Сюда будем записывать следующее слово для следующего вопроса.
+        next_word = None
+
+        # Если это обычная текстовая тренировка,
+        # берём следующее слово из общего списка WORDS.
+        if (active_quiz_stats[user_id]["type"] == "text"):
+            next_word = random.choice(WORDS)
+
+        # Если это текстовая тренировка только из избранных слов,
+        # берём следующее слово только из избранных слов пользователя.
+        elif (active_quiz_stats[user_id]["type"] == "favourite_text"):
+            next_word = random.choice(get_fav_words_in_db(user_id))    
+
+        # Сохраняем выбранное слово как текущее слово для следующего ответа пользователя.
+        current_quiz_words[user_id] = next_word
+
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard = [
+                [InlineKeyboardButton(text="🛑 Завершить тренировку", callback_data="finish_quiz")]
+            ]
+        )
+
+        question_message = await message.answer(
+            f"📝 Как переводится слово: {next_word['english']}?",
+            reply_markup = keyboard
+        )
+        active_quiz_message[user_id] = question_message
+        # Останавливаем обработчик
+        return
+
+    # Если пользователь не отвечает на активный тест,
+    # бот сообщает, что не знает, что делать с сообщением.
+    await message.answer(
+        "Не понял сообщение. Выбери действие на клавиатуре или используй /start."
+    )
