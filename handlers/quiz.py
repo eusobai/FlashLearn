@@ -39,8 +39,8 @@ from utils.quiz_utils import (
 # Это нужно делать сразу, чтобы у пользователя не крутилась загрузка.
 from utils.safe_calback import safe_callback_answer
 
-# 
-from handlers.favourites import send_fav_choice_quiz
+# Функция отправки вопроса тренировки из избранных слов.
+from utils.favourite_quiz import send_fav_choice_quiz
 
 # Логгер проекта для записи информации и ошибок.
 from utils.logger import logger
