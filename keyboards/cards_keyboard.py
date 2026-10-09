@@ -19,7 +19,7 @@ def build_level_keyboard(levels) -> InlineKeyboardMarkup:
         )
         
     rows.append(
-        [InlineKeyboardButton(text="❓ Узнать свой уровень:", callback_data="level:check_level")]
+        [InlineKeyboardButton(text="❓ Узнать свой уровень:", callback_data="check_level")]
     )       
     return InlineKeyboardMarkup(inline_keyboard=rows)
 

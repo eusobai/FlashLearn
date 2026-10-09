@@ -12,9 +12,13 @@ from aiogram.filters import Command
 # Типы Telegram-объектов.
 from aiogram.types import (
     Message, 
+    CallbackQuery,
     InlineKeyboardMarkup, 
     InlineKeyboardButton
 )
+
+# 
+from utils.safe_calback import safe_callback_answer
 
 # Функция для управления активной тренировкой.
 from utils.quiz_utils import cancel_active_quiz
@@ -22,8 +26,12 @@ from utils.quiz_utils import cancel_active_quiz
 from utils.logger import logger
 
 # Функции для работы с базой данных.
-from database.database import get_words, get_levels_from_db
-
+from database.database import (
+    get_words, 
+    get_levels_from_db, 
+    get_user_level_in_db, 
+    set_user_level
+)
 # Кнопки для проверки уровни
 from keyboards.cards_keyboard import build_level_keyboard
 
@@ -38,15 +46,66 @@ router = Router()
 WORDS = get_words()
 
 
+
+# =========================
+# ОБУЧЕНИЕ: ВЫБОР УРОВНЯ
+# =========================
+
+# Точка входа в обучение: сюда ведут и команда /card, и кнопка «📚 Учить слова».
+# Решает, какой экран показать: выбор уровня (если он ещё не задан) или следующий шаг.
 @router.message(Command("card"))
 @router.message(F.text == "📚 Учить слова")
-async def show_level_choice(message: Message) -> None:
+async def open_learning(message: Message) -> None:
+
+    user_id = message.from_user.id
+
+    # None означает, что пользователь ещё не выбирал уровень.
+    user_level = get_user_level_in_db(user_id)
     
-    levels = get_levels_from_db()
-    keyboard = build_level_keyboard(levels)
+    if user_level is None:
 
-    await message.answer("🎓 Укажите ваш уровень английского: ", reply_markup=keyboard)
+        levels = get_levels_from_db()
+        keyboard = build_level_keyboard(levels)
 
+        await message.answer("🎓 Укажите ваш уровень английского: ", reply_markup=keyboard)
+    else:
+        await message.answer(
+
+        # Заглушка: здесь будет экран выбора режима (случайные слова / по темам).
+        "Выбери темы, по которым хочешь учить слова.")
+
+
+
+# Пользователь нажал кнопку с уровнем. В callback_data лежит "level:<id>".
+@router.callback_query(F.data.startswith("level:"))
+async def select_level(callback: CallbackQuery):
+    
+    await safe_callback_answer(callback)
+
+    user_id = callback.from_user.id
+    level_id = int(callback.data.split(":", 1)[1])
+    set_user_level(user_id, level_id)
+
+    # Убираем кнопки, чтобы уровень нельзя было выбрать повторно по старому сообщению.
+    await callback.message.edit_reply_markup(reply_markup=None)
+    
+    await callback.message.answer(
+        "Уровень сохранён ✅ \n\n"
+        "Выбери темы, по которым хочешь учить слова.")
+
+
+# Кнопка «Узнать свой уровень».
+@router.callback_query(F.data == "check_level")
+async def start_level_test(callback: CallbackQuery) -> None:
+    await safe_callback_answer(callback)
+    
+    await callback.message.edit_reply_markup(reply_markup=None)
+
+    # Заглушка: тест уровня ещё не реализован.
+    await callback.message.answer(
+        "Скоро здесь будет тест для определения уровня.",
+        reply_markup=None
+    )
 
 # async def send_card(message: Message) -> None:
 

@@ -77,7 +77,36 @@ def get_words():
 
         return result
 
-    
+
+# =========================
+# ПОЛУЧЕНИЕ СЛОВ ПО УРОВНЮ
+# =========================
+def get_words_by_level_in_db(level_id:int):
+    with get_connection() as connection:
+        
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        cursor.execute(
+            """
+            SELECT                 
+                words.id,
+                words.english, 
+                words.russian,
+                words.definition,
+                words.example,
+                words.pronunciation
+                FROM words
+                JOIN levels
+                    ON words.level_id = levels.id
+                
+                WHERE levels.id = %s
+            """,
+            (level_id,),
+        )
+
+        result = cursor.fetchall()
+        cursor.close()
+        return result
+
 
 # =========================
 # ДОБАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
@@ -119,6 +148,46 @@ def get_levels_from_db():
         result = cursor.fetchall()
         cursor.close()
         return result
+
+# =========================
+# ПОЛУЧЕНИЕ УРОВНЯ ПОЛЬЗОВАТЕЛЯ
+# =========================
+
+def get_user_level_in_db(user_id):
+    with get_connection() as connection:
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute(
+            "SELECT * FROM users WHERE user_id=%s",
+            (user_id,)               
+        )
+
+        result = cursor.fetchone()
+        
+        if result is None: 
+            return 
+        
+        user_level = result["level_id"]
+        
+        return user_level
+
+
+# =========================
+#  ДОБАВЛЕНИЕ / ОБНОВЛЕНИЕ УРОВНЯ
+# =========================
+
+def set_user_level(user_id:int, level_id:int):
+    with get_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO users (user_id, level_id) VALUES (%s, %s)
+            ON CONFLICT (user_id) DO UPDATE SET level_id = EXCLUDED.level_id
+            """,
+            (user_id, level_id),
+        )
+        cursor.close()
+
 
 
 # =========================
