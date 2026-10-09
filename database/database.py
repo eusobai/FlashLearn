@@ -12,7 +12,7 @@ import psycopg2
 # Например:
 # word["english"]
 # word["russian"]
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, NamedTupleCursor
 
 # os позволяет получать значения переменных окружения.
 # Например, DATABASE_URL из файла .env.
@@ -101,6 +101,24 @@ def add_user_to_db(user_id: int) -> None:
 
         # Закрываем cursor после выполнения запроса.
         cursor.close()
+
+
+# =========================
+# ПОЛУЧЕНИЕ УРОВНЕЙ
+# =========================
+
+def get_levels_from_db():
+
+    with get_connection() as connection:
+        cursor = connection.cursor(cursor_factory = RealDictCursor)
+
+        cursor.execute(
+           "SELECT * FROM levels" 
+        )
+
+        result = cursor.fetchall()
+        cursor.close()
+        return result
 
 
 # =========================

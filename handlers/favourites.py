@@ -41,8 +41,7 @@ from utils.logger import logger
 from handlers.quiz import (
     active_quiz_message,
     current_quiz_words,
-    active_quiz_stats,
-    current_choice_quiz_words
+    active_quiz_stats
 )
 
 # Функция отправки вопроса тренировки из избранных слов.
