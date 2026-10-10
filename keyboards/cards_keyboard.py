@@ -23,3 +23,10 @@ def build_level_keyboard(levels) -> InlineKeyboardMarkup:
     )       
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
+def build_topic_keyboard(topics) -> InlineKeyboardMarkup:
+    rows = []
+
+    for topic in topics:
+        rows.append(
+            [InlineKeyboardButton(text="")]
+        )

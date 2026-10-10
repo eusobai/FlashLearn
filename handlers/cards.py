@@ -58,6 +58,7 @@ WORDS = get_words()
 async def open_learning(message: Message) -> None:
 
     user_id = message.from_user.id
+    await cancel_active_quiz(user_id)
 
     # None означает, что пользователь ещё не выбирал уровень.
     user_level = get_user_level_in_db(user_id)
@@ -65,9 +66,10 @@ async def open_learning(message: Message) -> None:
     if user_level is None:
 
         levels = get_levels_from_db()
-        keyboard = build_level_keyboard(levels)
+        
+        level_keyboard = build_level_keyboard(levels)
 
-        await message.answer("🎓 Укажите ваш уровень английского: ", reply_markup=keyboard)
+        await message.answer("🎓 Укажите ваш уровень английского: ", reply_markup=level_keyboard)
     else:
         await message.answer(
 
