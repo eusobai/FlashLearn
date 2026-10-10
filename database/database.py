@@ -142,7 +142,7 @@ def get_levels_from_db():
         cursor = connection.cursor(cursor_factory = RealDictCursor)
 
         cursor.execute(
-           "SELECT * FROM levels" 
+           "SELECT * FROM levels ORDER BY id" 
         )
 
         result = cursor.fetchall()
@@ -165,7 +165,7 @@ def get_user_level_in_db(user_id):
         result = cursor.fetchone()
         
         if result is None: 
-            return 
+            return None
         
         user_level = result["level_id"]
         
@@ -187,6 +187,43 @@ def set_user_level(user_id:int, level_id:int):
             (user_id, level_id),
         )
         cursor.close()
+
+
+# =========================
+# ТЕМЫ
+# =========================
+
+# Возвращает все темы из таблицы topics списком словарей.
+def get_topics_in_db():
+    with get_connection() as connection:
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute("SELECT * FROM topics ORDER BY id")
+        
+        result = cursor.fetchall()
+
+        cursor.close()
+        return result
+
+
+
+# Возвращает все слова одной темы (topic_id — id темы из таблицы topics).
+def get_words_by_topic(topic_id:int):
+    with get_connection() as connection:
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM words 
+            WHERE topic_id = %s
+            ORDER BY id
+            """,
+            (topic_id,),
+        )
+        result = cursor.fetchall()
+        cursor.close()
+        return result
 
 
 
