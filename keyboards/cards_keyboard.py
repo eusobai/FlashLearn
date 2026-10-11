@@ -7,7 +7,7 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # Функции для работы с базой данных.
-from database.database import get_levels_from_db
+from database.database import get_levels_from_db, get_topics_in_db
 
 
 
@@ -23,10 +23,23 @@ def build_level_keyboard(levels) -> InlineKeyboardMarkup:
     )       
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
+
+def build_mode_keyboard():
+
+    mode_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎲 Случайные слова:", callback_data="")],
+            [InlineKeyboardButton(text="📚 По темам:", callback_data="topic_words")]
+        ]
+    )
+
+    return mode_keyboard
+
+
 def build_topic_keyboard(topics) -> InlineKeyboardMarkup:
     rows = []
 
     for topic in topics:
         rows.append(
-            [InlineKeyboardButton(text="")]
+            [InlineKeyboardButton(text=f"💬 {topic['name']}")]
         )

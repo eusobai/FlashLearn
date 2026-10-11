@@ -33,7 +33,7 @@ from database.database import (
     set_user_level
 )
 # Кнопки для проверки уровни
-from keyboards.cards_keyboard import build_level_keyboard
+from keyboards.cards_keyboard import build_level_keyboard, build_mode_keyboard
 
 # =========================
 # ROUTER
@@ -74,7 +74,7 @@ async def open_learning(message: Message) -> None:
         await message.answer(
 
         # Заглушка: здесь будет экран выбора режима (случайные слова / по темам).
-        "Выбери темы, по которым хочешь учить слова.")
+        "Выбери темы, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
 
 
 
@@ -93,7 +93,7 @@ async def select_level(callback: CallbackQuery):
     
     await callback.message.answer(
         "Уровень сохранён ✅ \n\n"
-        "Выбери темы, по которым хочешь учить слова.")
+        "Выбери темы, по которым хочешь учить слова.", reply_markup=build_mode_keyboard)
 
 
 # Кнопка «Узнать свой уровень».
@@ -109,6 +109,9 @@ async def start_level_test(callback: CallbackQuery) -> None:
         reply_markup=None
     )
 
+
+# Кнопка Выбрать режим слов».
+# async def select_mode()
 # async def send_card(message: Message) -> None:
 
 #     # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
