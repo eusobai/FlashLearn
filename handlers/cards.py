@@ -30,12 +30,14 @@ from utils.logger import logger
 from database.database import (
     get_words, 
     get_levels_from_db,
-    get_words_by_level_in_db, 
+    get_words_by_level_in_db,
+    get_words_by_topic_in_db, 
     get_user_level_in_db, 
-    set_user_level
+    set_user_level,
+    get_topics_in_db
 )
 # Кнопки для проверки уровни
-from keyboards.cards_keyboard import build_level_keyboard, build_mode_keyboard
+from keyboards.cards_keyboard import build_level_keyboard, build_mode_keyboard, build_topic_keyboard
 
 # =========================
 # ROUTER
@@ -78,7 +80,7 @@ async def open_learning(message: Message) -> None:
         await message.answer(
 
         # Заглушка: здесь будет экран выбора режима (случайные слова / по темам).
-        "Выбери темы, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
+        "Выбери режим, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
 
 
 
@@ -99,7 +101,7 @@ async def select_level(callback: CallbackQuery):
     
     await callback.message.answer(
         "Уровень сохранён ✅ \n\n"
-        "Выбери темы, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
+        "Выбери режим, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
 
 
 # Кнопка «Узнать свой уровень».
@@ -165,6 +167,29 @@ async def send_random_word(callback: CallbackQuery) -> None:
     word = random.choice(WORDS)
     await send_card(callback.message, word, callback.from_user.username)
 
+
+@router.callback_query(F.data == "topic_words")
+async def select_topic(callback: CallbackQuery) -> None:
+    await safe_callback_answer(callback)
+
+    topics = get_topics_in_db()
+
+    await callback.message.answer("🌟 Выбирай темы и начнём учить слова", reply_markup=build_topic_keyboard(topics))
+
+
+# Режим «🎓 Слова по темам».
+@router.callback_query(F.data.startswith("topic:"))
+async def get_topic_words(callback: CallbackQuery) -> None:
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
+    await safe_callback_answer(callback)
+
+    topic_id = int(callback.data.split(":", 1)[1])
+    
+    topic_words = get_words_by_topic_in_db(topic_id)
+    random_word = random.choice(topic_words)
+    
+    await send_card(callback.message, random_word, callback.from_user.username)
 
 # Режим «🎓 Случайные слова по уровню»: слово подбирается под уровень пользователя.
 @router.callback_query(F.data == "random_words_by_level")

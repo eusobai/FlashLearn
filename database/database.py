@@ -208,7 +208,7 @@ def get_topics_in_db():
 
 
 # Возвращает все слова одной темы (topic_id — id темы из таблицы topics).
-def get_words_by_topic(topic_id:int):
+def get_words_by_topic_in_db(topic_id:int):
     with get_connection() as connection:
         cursor = connection.cursor(cursor_factory=RealDictCursor)
 
@@ -224,7 +224,6 @@ def get_words_by_topic(topic_id:int):
         result = cursor.fetchall()
         cursor.close()
         return result
-
 
 
 # =========================

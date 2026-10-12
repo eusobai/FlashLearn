@@ -38,9 +38,37 @@ def build_mode_keyboard():
 
 
 def build_topic_keyboard(topics) -> InlineKeyboardMarkup:
+ # Словарь сопоставления тем и смайлов (можно искать по названию или по ID)
+    TOPIC_EMOJIS = {
+        "food": "🍔",
+        "travel": "✈️",
+        "daily life": "🏡",
+        "education": "📚",
+        "work": "💼",
+        "technology": "💻",
+        "anthropology": "🪶",
+        "art and architecture": "🏛️",
+        "astronomy and physics": "🪐",
+        "biology and life sciences": "🧬",
+        "campus life": "🏫"
+    }
+    
     rows = []
 
     for topic in topics:
+        topic_name = topic['name']
+        # Приводим к нижнему регистру для точного совпадения со словарём
+        clean_name = topic_name.lower().strip()
+        
+        # Ищем смайл в словаре. Если не нашли — ставим дефолтный 🏷️
+        emoji = TOPIC_EMOJIS.get(clean_name, "🏷️")
+        
         rows.append(
-            [InlineKeyboardButton(text=f"💬 {topic['name']}")]
+            [InlineKeyboardButton(
+                text=f"{emoji}  {topic_name}", 
+                callback_data=f"topic:{topic['id']}"
+            )]
         )
+
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
