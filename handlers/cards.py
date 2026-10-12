@@ -2,6 +2,7 @@
 # ИМПОРТЫ
 # =========================
 
+import random
 
 # Основные классы aiogram.
 from aiogram import Router, F
@@ -28,7 +29,8 @@ from utils.logger import logger
 # Функции для работы с базой данных.
 from database.database import (
     get_words, 
-    get_levels_from_db, 
+    get_levels_from_db,
+    get_words_by_level_in_db, 
     get_user_level_in_db, 
     set_user_level
 )
@@ -58,6 +60,8 @@ WORDS = get_words()
 async def open_learning(message: Message) -> None:
 
     user_id = message.from_user.id
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
     await cancel_active_quiz(user_id)
 
     # None означает, что пользователь ещё не выбирал уровень.
@@ -81,11 +85,13 @@ async def open_learning(message: Message) -> None:
 # Пользователь нажал кнопку с уровнем. В callback_data лежит "level:<id>".
 @router.callback_query(F.data.startswith("level:"))
 async def select_level(callback: CallbackQuery):
-    
+
+    # Сразу убираем загрузку у нажатой inline-кнопки.
     await safe_callback_answer(callback)
 
     user_id = callback.from_user.id
     level_id = int(callback.data.split(":", 1)[1])
+    
     set_user_level(user_id, level_id)
 
     # Убираем кнопки, чтобы уровень нельзя было выбрать повторно по старому сообщению.
@@ -93,7 +99,7 @@ async def select_level(callback: CallbackQuery):
     
     await callback.message.answer(
         "Уровень сохранён ✅ \n\n"
-        "Выбери темы, по которым хочешь учить слова.", reply_markup=build_mode_keyboard)
+        "Выбери темы, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
 
 
 # Кнопка «Узнать свой уровень».
@@ -110,46 +116,84 @@ async def start_level_test(callback: CallbackQuery) -> None:
     )
 
 
-# Кнопка Выбрать режим слов».
-# async def select_mode()
-# async def send_card(message: Message) -> None:
+# Отправляет карточку слова: текст и кнопка «В избранное».
+# word — словарь с данными слова (id, english, russian, ...).
+async def send_card(message: Message, word: dict, username):
 
-#     # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
-#     await cancel_active_quiz(message.from_user.id)
+    logger.info("Card sent | username=%s | word=%s", username, word["english"])
+
+    # Создаём inline-кнопку.
+    #
+    # text — текст, который видит пользователь.
+    #
+    # callback_data — данные, которые получит бот
+    # после нажатия кнопки.
+    #
+    # Например:
+    # favourite:85
+    #
+    # Благодаря этому бот знает,
+    # какое слово нужно добавить в избранное.
+    favourite_button = InlineKeyboardButton(
+        text = "⭐ Добавить в мои слова", callback_data=f"favourite:{word['id']}"
+    )
+
+    # Создаём inline-клавиатуру и помещаем кнопку в неё.
+    favorite_keyboard = InlineKeyboardMarkup(inline_keyboard=[[favourite_button]])
+
+    # Отправляем карточку и прикрепляем inline-кнопку.
+    await message.answer(
+        f"📚 Слово: <b>{word['english']}</b>\n"
+        f"RU Перевод: {word['russian']}\n"
+        f"📖 Определение: {word['definition']}\n"
+        f"💬 Пример: {word['example']}\n"
+        f"🔊 Произношение: {word['pronunciation']}",
+        reply_markup=favorite_keyboard,
+        parse_mode = "HTML"
+    )
+
+
+# Режим «🎲 Любые слова»: случайное слово из всего словаря, без учёта уровня.
+@router.callback_query(F.data == "random_words")
+async def send_random_word(callback: CallbackQuery) -> None:
     
-#     # Выбираем случайное слово из словаря.
-#     word = random.choice(WORDS)
+    await safe_callback_answer(callback)
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(callback.from_user.id)
+    
+    # Выбираем случайное слово из словаря.
+    word = random.choice(WORDS)
+    await send_card(callback.message, word, callback.from_user.username)
 
-#     username = message.from_user.username if message.from_user.username else "unknown"
 
-#     logger.info("Card sent | username=%s | word=%s", username, word["english"])
+# Режим «🎓 Случайные слова по уровню»: слово подбирается под уровень пользователя.
+@router.callback_query(F.data == "random_words_by_level")
+async def get_random_level_words(callback: CallbackQuery) -> None:
+    await safe_callback_answer(callback)
 
-#     # Создаём inline-кнопку.
-#     #
-#     # text — текст, который видит пользователь.
-#     #
-#     # callback_data — данные, которые получит бот
-#     # после нажатия кнопки.
-#     #
-#     # Например:
-#     # favourite:85
-#     #
-#     # Благодаря этому бот знает,
-#     # какое слово нужно добавить в избранное.
-#     favourite_button = InlineKeyboardButton(
-#         text = "⭐ Добавить в мои слова", callback_data=f"favourite:{word['id']}"
-#     )
+    user_id = callback.from_user.id
 
-#     # Создаём inline-клавиатуру и помещаем кнопку в неё.
-#     favorite_keyboard = InlineKeyboardMarkup(inline_keyboard=[[favourite_button]])
+    # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
+    await cancel_active_quiz(user_id)
 
-#     # Отправляем карточку и прикрепляем inline-кнопку.
-#     await message.answer(
-#         f"📚 Слово: <b>{word['english']}</b>\n"
-#         f"RU Перевод: {word['russian']}\n"
-#         f"📖 Определение: {word['definition']}\n"
-#         f"💬 Пример: {word['example']}\n"
-#         f"🔊 Произношение: {word['pronunciation']}",
-#         reply_markup=favorite_keyboard,
-#         parse_mode = "HTML"
-#     )
+
+    user_level = get_user_level_in_db(user_id)
+
+    if user_level is None:
+        levels = get_levels_from_db()
+        
+        level_keyboard = build_level_keyboard(levels)
+
+        await callback.message.answer("🎓 Укажите ваш уровень английского: ", reply_markup=level_keyboard)
+        return
+    
+    words_by_level = get_words_by_level_in_db(user_level)
+
+    if not words_by_level:
+        await callback.message.answer("Для этого уровня пока нет слов.")
+        return
+    
+    random_word = random.choice(words_by_level)
+
+    await send_card(callback.message, random_word, callback.from_user.username)
+

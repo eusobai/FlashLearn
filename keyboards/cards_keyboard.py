@@ -28,8 +28,9 @@ def build_mode_keyboard():
 
     mode_keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🎲 Случайные слова:", callback_data="")],
-            [InlineKeyboardButton(text="📚 По темам:", callback_data="topic_words")]
+            [InlineKeyboardButton(text="🎲 Любые слова:", callback_data="random_words")],
+            [InlineKeyboardButton(text="📚 По темам:", callback_data="topic_words")],
+            [InlineKeyboardButton(text="🎓 Случайные слова по уровню:", callback_data="random_words_by_level")],
         ]
     )
 
