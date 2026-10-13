@@ -120,7 +120,7 @@ async def start_level_test(callback: CallbackQuery) -> None:
 
 # Отправляет карточку слова: текст и кнопка «В избранное».
 # word — словарь с данными слова (id, english, russian, ...).
-async def send_card(message: Message, word: dict, username):
+async def send_card(message: Message, word: dict, username: str, next_data: str):
 
     logger.info("Card sent | username=%s | word=%s", username, word["english"])
 
@@ -140,8 +140,10 @@ async def send_card(message: Message, word: dict, username):
         text = "⭐ Добавить в мои слова", callback_data=f"favourite:{word['id']}"
     )
 
+
+    next_button = InlineKeyboardButton(text="➡️ Следующее слово", callback_data=next_data)
     # Создаём inline-клавиатуру и помещаем кнопку в неё.
-    favorite_keyboard = InlineKeyboardMarkup(inline_keyboard=[[favourite_button]])
+    favorite_keyboard = InlineKeyboardMarkup(inline_keyboard=[ [favourite_button], [next_button] ])
 
     # Отправляем карточку и прикрепляем inline-кнопку.
     await message.answer(
@@ -165,7 +167,7 @@ async def send_random_word(callback: CallbackQuery) -> None:
     
     # Выбираем случайное слово из словаря.
     word = random.choice(WORDS)
-    await send_card(callback.message, word, callback.from_user.username)
+    await send_card(callback.message, word, callback.from_user.username, "random_words")
 
 
 @router.callback_query(F.data == "topic_words")
@@ -189,7 +191,7 @@ async def get_topic_words(callback: CallbackQuery) -> None:
     topic_words = get_words_by_topic_in_db(topic_id)
     random_word = random.choice(topic_words)
     
-    await send_card(callback.message, random_word, callback.from_user.username)
+    await send_card(callback.message, random_word, callback.from_user.username, f"topic:{topic_id}")
 
 # Режим «🎓 Случайные слова по уровню»: слово подбирается под уровень пользователя.
 @router.callback_query(F.data == "random_words_by_level")
@@ -220,5 +222,5 @@ async def get_random_level_words(callback: CallbackQuery) -> None:
     
     random_word = random.choice(words_by_level)
 
-    await send_card(callback.message, random_word, callback.from_user.username)
+    await send_card(callback.message, random_word, callback.from_user.username, "random_words_by_level")
 
