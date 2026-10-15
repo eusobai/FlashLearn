@@ -21,6 +21,9 @@ from aiogram.types import (
 # 
 from utils.safe_calback import safe_callback_answer
 
+# 
+from utils.message_utils import clear_old_buttons
+
 # Функция для управления активной тренировкой.
 from utils.quiz_utils import cancel_active_quiz
 
@@ -160,8 +163,11 @@ async def send_card(message: Message, word: dict, username: str, next_data: str)
 # Режим «🎲 Любые слова»: случайное слово из всего словаря, без учёта уровня.
 @router.callback_query(F.data == "random_words")
 async def send_random_word(callback: CallbackQuery) -> None:
-    
+
+    # Убираем анимацию загрузки и удаляем все inline-кнопки, кроме «Добавить в мои слова.
     await safe_callback_answer(callback)
+    await clear_old_buttons(callback.message)
+
     # Вызываем функцию, чтобы любая новая команда отменяла предыдущую тренировку и убирала её кнопку    
     await cancel_active_quiz(callback.from_user.id)
     
@@ -185,7 +191,8 @@ async def get_topic_words(callback: CallbackQuery) -> None:
 
     # Сразу убираем загрузку у нажатой inline-кнопки.
     await safe_callback_answer(callback)
-
+    await clear_old_buttons(callback.message)
+    
     topic_id = int(callback.data.split(":", 1)[1])
     
     topic_words = get_words_by_topic_in_db(topic_id)
@@ -196,7 +203,10 @@ async def get_topic_words(callback: CallbackQuery) -> None:
 # Режим «🎓 Случайные слова по уровню»: слово подбирается под уровень пользователя.
 @router.callback_query(F.data == "random_words_by_level")
 async def get_random_level_words(callback: CallbackQuery) -> None:
+  
+    # Убираем анимацию загрузки и удаляем все inline-кнопки, кроме «Добавить в мои слова.
     await safe_callback_answer(callback)
+    await clear_old_buttons(callback.message)
 
     user_id = callback.from_user.id
 
