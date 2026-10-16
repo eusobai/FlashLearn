@@ -93,7 +93,7 @@ dp.include_router(stats.router)
 # # =========================
 # # НАСТРОЙКИ
 # # =========================
-dp.include_router()
+# dp.include_router()
 
 
 # # =========================
