@@ -15,7 +15,7 @@ from aiogram.types import Message
 from utils.quiz_utils import cancel_active_quiz
 
 # Логгер проекта для записи информации и ошибок.
-from utils.logger import logger
+from utils.logger_utils import logger
 
 # Функции для работы с базой данных.
 from database.database import add_user_to_db

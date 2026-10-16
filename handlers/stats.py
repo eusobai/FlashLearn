@@ -18,7 +18,7 @@ from utils.quiz_utils import cancel_active_quiz
 from database.database import get_stats_from_db, reset_stats_in_db
 
 # Логгер проекта для записи информации и ошибок.
-from utils.logger import logger
+from utils.logger_utils import logger
 
 
 # =========================

@@ -35,7 +35,7 @@ from utils.quiz_utils import cancel_active_quiz
 from utils.safe_calback import safe_callback_answer
 
 # Логгер проекта для записи информации и ошибок.
-from utils.logger import logger
+from utils.logger_utils import logger
 
 #  Здесь временно хранится текущее слово, статистика, вопрос для каждого пользователя,
 from handlers.quiz import (
@@ -45,7 +45,7 @@ from handlers.quiz import (
 )
 
 # Функция отправки вопроса тренировки из избранных слов.
-from utils.favourite_quiz import send_fav_choice_quiz
+from utils.favourite_quiz_utils import send_fav_choice_quiz
 
 router = Router()
 

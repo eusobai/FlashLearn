@@ -6,7 +6,7 @@ import os
 import asyncio
 
 # from MODULES
-from utils.logger import logger
+from utils.logger_utils import logger
 
 # HANDLERS
 from handlers import (

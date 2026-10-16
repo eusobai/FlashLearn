@@ -40,10 +40,10 @@ from utils.quiz_utils import (
 from utils.safe_calback import safe_callback_answer
 
 # Функция отправки вопроса тренировки из избранных слов.
-from utils.favourite_quiz import send_fav_choice_quiz
+from utils.favourite_quiz_utils import send_fav_choice_quiz
 
 # Логгер проекта для записи информации и ошибок.
-from utils.logger import logger
+from utils.logger_utils import logger
 
 # 
 # ROUTER

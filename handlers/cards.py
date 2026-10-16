@@ -27,7 +27,7 @@ from utils.message_utils import clear_old_buttons
 # Функция для управления активной тренировкой.
 from utils.quiz_utils import cancel_active_quiz
 
-from utils.logger import logger
+from utils.logger_utils import logger
 
 # Функции для работы с базой данных.
 from database.database import (

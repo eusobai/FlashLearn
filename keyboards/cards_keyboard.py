@@ -6,6 +6,9 @@
 # Типы Telegram-объектов.
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+# 
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
 # Функции для работы с базой данных.
 from database.database import get_levels_from_db, get_topics_in_db
 
@@ -38,7 +41,9 @@ def build_mode_keyboard():
 
 
 def build_topic_keyboard(topics) -> InlineKeyboardMarkup:
- # Словарь сопоставления тем и смайлов (можно искать по названию или по ID)
+
+    builder = InlineKeyboardBuilder()
+    # Словарь сопоставления тем и смайлов (можно искать по названию или по ID)
     TOPIC_EMOJIS = {
         "food": "🍔",
         "travel": "✈️",
@@ -63,12 +68,16 @@ def build_topic_keyboard(topics) -> InlineKeyboardMarkup:
         # Ищем смайл в словаре. Если не нашли — ставим дефолтный 🏷️
         emoji = TOPIC_EMOJIS.get(clean_name, "🏷️")
         
-        rows.append(
-            [InlineKeyboardButton(
+        builder.add(
+            InlineKeyboardButton(
                 text=f"{emoji}  {topic_name}", 
                 callback_data=f"topic:{topic['id']}"
-            )]
+            )
         )
 
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+   
+    builder.adjust(2)
+
+    print(builder)
+    return builder.as_markup()
 

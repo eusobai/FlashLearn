@@ -3,7 +3,7 @@
 from aiogram.exceptions import TelegramBadRequest
 
 # Логгер проекта для записи информации и ошибок.
-from utils.logger import logger
+from utils.logger_utils import logger
 
 
 
