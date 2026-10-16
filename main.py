@@ -84,16 +84,23 @@ dp.include_router(cards.router)
 dp.include_router(favourites.router)
 
 
+# =========================
+# СТАТИСТИКА
+# =========================
+dp.include_router(stats.router)
+
+
+# # =========================
+# # НАСТРОЙКИ
+# # =========================
+dp.include_router()
+
+
 # # =========================
 # # ТЕСТ
 # # =========================
 dp.include_router(quiz.router)
 
-
-# =========================
-# СТАТИСТИКА
-# =========================
-dp.include_router(stats.router)
 
 
 # =========================

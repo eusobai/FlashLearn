@@ -104,7 +104,7 @@ async def select_level(callback: CallbackQuery):
     
     await callback.message.answer(
         "Уровень сохранён ✅ \n\n"
-        "Выбери режим, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
+        "🌟 Выбери режим, по которым хочешь учить слова.", reply_markup=build_mode_keyboard())
 
 
 # Кнопка «Узнать свой уровень».
@@ -145,8 +145,10 @@ async def send_card(message: Message, word: dict, username: str, next_data: str)
 
 
     next_button = InlineKeyboardButton(text="➡️ Следующее слово", callback_data=next_data)
+    back_to_modes_button = InlineKeyboardButton(text="🔙 Режимы", callback_data="mode:back")
+
     # Создаём inline-клавиатуру и помещаем кнопку в неё.
-    favorite_keyboard = InlineKeyboardMarkup(inline_keyboard=[ [favourite_button], [next_button] ])
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[ [favourite_button], [next_button], [back_to_modes_button] ])
 
     # Отправляем карточку и прикрепляем inline-кнопку.
     await message.answer(
@@ -155,10 +157,20 @@ async def send_card(message: Message, word: dict, username: str, next_data: str)
         f"📖 Определение: {word['definition']}\n"
         f"💬 Пример: {word['example']}\n"
         f"🔊 Произношение: {word['pronunciation']}",
-        reply_markup=favorite_keyboard,
+        reply_markup=keyboard,
         parse_mode = "HTML"
     )
 
+@router.callback_query(F.data =="mode:back")
+async def back_to_modes(callback: CallbackQuery) -> None:
+    
+    await safe_callback_answer(callback)
+    await clear_old_buttons(callback.message)
+
+    await callback.message.answer(        
+        "🌟 Выбери режим, по которым хочешь учить слова.",
+        reply_markup=build_mode_keyboard()
+)
 
 # Режим «🎲 Любые слова»: случайное слово из всего словаря, без учёта уровня.
 @router.callback_query(F.data == "random_words")
@@ -182,7 +194,7 @@ async def select_topic(callback: CallbackQuery) -> None:
 
     topics = get_topics_in_db()
 
-    await callback.message.answer("🌟 Выбирай темы и начнём учить слова", reply_markup=build_topic_keyboard(topics))
+    await callback.message.answer("🌟 Выбери режим, по которым хочешь учить слова.", reply_markup=build_topic_keyboard(topics))
 
 
 # Режим «🎓 Слова по темам».
